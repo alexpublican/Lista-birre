@@ -34,6 +34,7 @@ const DICT = {
   enter: { it: "Entra", en: "Enter", de: "Anmelden", fr: "Entrer", es: "Entrar" },
   back_menu: { it: "Torna al menu", en: "Back to menu", de: "Zurück zur Karte", fr: "Retour au menu", es: "Volver al menú" },
   dashboard: { it: "Gestione Birre", en: "Manage Beers", de: "Biere verwalten", fr: "Gérer les bières", es: "Gestión de cervezas" },
+  refresh: { it: "Aggiorna", en: "Refresh", de: "Aktualisieren", fr: "Actualiser", es: "Actualizar" },
   logout: { it: "Esci", en: "Log out", de: "Abmelden", fr: "Déconnexion", es: "Cerrar sesión" },
   add_beer: { it: "Aggiungi birra", en: "Add beer", de: "Bier hinzufügen", fr: "Ajouter une bière", es: "Añadir cerveza" },
   edit_beer: { it: "Modifica birra", en: "Edit beer", de: "Bier bearbeiten", fr: "Modifier la bière", es: "Editar cerveza" },

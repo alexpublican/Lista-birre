@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Archive, BellRing, DatabaseBackup, Clock, Cylinder, KeyRound, Languages, Tv, Eye, History, LogOut, Pencil, Plus, QrCode, RotateCcw, Settings, Star, Trash2 } from "lucide-react";
+import { Archive, BellRing, DatabaseBackup, Clock, Cylinder, KeyRound, Languages, Tv, Eye, History, LogOut, Pencil, Plus, QrCode, RefreshCw, RotateCcw, Settings, Star, Trash2 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import HistoricHeader from "@/components/HistoricHeader";
@@ -145,10 +145,16 @@ export default function AdminDashboard() {
     <div className="min-h-screen">
       <HistoricHeader
         right={
-          <Button variant="ghost" size="sm" onClick={() => endSession("/admin")} data-testid="logout-button">
-            <LogOut className="size-4" />
-            <span className="hidden sm:inline">{t("logout")}</span>
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={() => window.location.reload()} data-testid="refresh-button">
+              <RefreshCw className="size-4" />
+              <span className="hidden sm:inline">{t("refresh")}</span>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => endSession("/admin")} data-testid="logout-button">
+              <LogOut className="size-4" />
+              <span className="hidden sm:inline">{t("logout")}</span>
+            </Button>
+          </div>
         }
       />
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
