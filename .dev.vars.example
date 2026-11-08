@@ -1,0 +1,7 @@
+# Copia questo file in .dev.vars per provare il sito sul tuo computer (npm run dev:api)
+SUPABASE_SECRET_KEY=sb_secret_...
+ADMIN_PIN=1234
+GEMINI_API_KEY=
+RESEND_API_KEY=
+EMAIL_FROM=Birreria Cassina <menu@tuodominio.it>
+APP_URL=

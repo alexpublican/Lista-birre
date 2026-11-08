@@ -1,0 +1,25 @@
+{
+  // Configurazione Cloudflare: un unico Worker che serve il sito (cartella dist) e le API (/api).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lista-birre",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "triggers": {
+    // 03:00 UTC = 04:00 ora italiana (inverno): backup notturno
+    // :17 di ogni ora: traduzioni mancanti + avvisi email in sospeso
+    "crons": ["0 3 * * *", "17 * * * *"]
+  },
+  "vars": {
+    "SUPABASE_URL": "https://fizctwlkmdngftolwrsd.supabase.co",
+    "GEMINI_MODEL": "gemini-3-flash-preview"
+  },
+  "observability": { "enabled": true }
+  // Segreti da impostare nel pannello Cloudflare (Settings → Variables and Secrets):
+  // SUPABASE_SECRET_KEY, ADMIN_PIN, GEMINI_API_KEY, RESEND_API_KEY, EMAIL_FROM, APP_URL
+}
