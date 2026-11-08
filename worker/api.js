@@ -452,6 +452,14 @@ on("POST", "/beers/:id/rate", async (c) => {
     await c.db.insert("ratings", { beer_id: id, device: dev, stars, updated_at: nowIso() }, { onConflict: "beer_id,device" });
     return json({ stars }, 200, headers);
 });
+// Il cliente cancella il proprio voto (solo il suo: riconosciuto dal cookie del telefono)
+on("DELETE", "/beers/:id/rate", async (c) => {
+    const id = c.params[0];
+    const dev = getCookie(c.req, DEVICE_COOKIE);
+    if (dev) await c.db.delete("ratings", `beer_id=eq.${enc(id)}&device=eq.${enc(dev)}`);
+    return json({ ok: true });
+});
+
 on("GET", "/ratings/mine", async (c) => {
     const dev = getCookie(c.req, DEVICE_COOKIE);
     if (!dev)
