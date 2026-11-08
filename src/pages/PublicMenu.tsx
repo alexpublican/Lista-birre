@@ -73,18 +73,7 @@ export default function PublicMenu() {
 
   return (
     <div className="min-h-screen">
-      <HistoricHeader
-        right={
-          <Link
-            to="/admin"
-            aria-label={t("staff")}
-            data-testid="staff-link"
-            className="grid size-9 place-items-center rounded-full border border-[#3D3126] text-[#B5A799] transition-colors duration-150 hover:text-[#F59E0B]"
-          >
-            <Lock className="size-4" />
-          </Link>
-        }
-      />
+      <HistoricHeader />
 
       <section className="relative overflow-hidden border-b border-[#2E241B]" data-testid="hero">
         <img src={HERO} alt="" className="absolute inset-0 size-full object-cover" />
@@ -257,7 +246,17 @@ export default function PublicMenu() {
           <p className="font-heading text-2xl font-semibold">Birreria Cassina</p>
           <div className="brass-rule mt-3 mb-6 w-20" />
           <VenueInfo />
-          <p className="mt-8 text-xs tracking-[0.15em] text-[#786C60] uppercase">{t("since")}</p>
+          <div className="mt-8 flex items-center justify-between gap-4">
+            <p className="text-xs tracking-[0.15em] text-[#786C60] uppercase">{t("since")}</p>
+            <Link
+              to="/admin"
+              aria-label={t("staff")}
+              data-testid="staff-link"
+              className="grid size-8 place-items-center rounded-full text-[#4A3F35] transition-colors duration-150 hover:text-[#B5A799]"
+            >
+              <Lock className="size-3.5" />
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
