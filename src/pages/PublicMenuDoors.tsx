@@ -71,7 +71,7 @@ export default function PublicMenuDoors() {
   const bySector = (loc: Location) =>
     onMenu
       .filter((b) => b.posizione === loc)
-      .sort(loc === "cantina" ? byBrewery : (a, b) => Number(b.disponibile) - Number(a.disponibile) || byTap(a, b));
+      .sort(loc !== "spina" ? byBrewery : (a, b) => Number(b.disponibile) - Number(a.disponibile) || byTap(a, b));
 
   const go = (s: Location | null) => {
     setParams(s ? { s } : {});
@@ -94,8 +94,13 @@ export default function PublicMenuDoors() {
       );
 
   const sectorBeers = sector ? bySector(sector) : [];
-  // Cantina: blocchi per birrificio con scorciatoie in alto.
-  const breweryGroups = sector === "cantina" ? groupByBrewery(items) : [];
+  // Frigo e Cantina: blocchi per birrificio (A→Z) con scorciatoie in alto.
+  const grouped = sector === "frigo" || sector === "cantina";
+  const breweryGroups = grouped ? groupByBrewery(items) : [];
+  const groupTheme =
+    sector === "frigo"
+      ? { chip: "border-[#0EA5E9]/40 bg-[#0C2E3A]/60 text-[#7DD3FC] hover:bg-[#0C2E3A]", rule: "border-[#0EA5E9]/30", title: "text-[#7DD3FC]" }
+      : { chip: "border-[#A855F7]/40 bg-[#31182D]/60 text-[#F0ABFC] hover:bg-[#31182D]", rule: "border-[#A855F7]/30", title: "text-[#F0ABFC]" };
   const jumpTo = (key: string) =>
     document.getElementById(`brewery-${key.replace(/[^a-z0-9]+/g, "-")}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   const dietChips = [
@@ -282,14 +287,14 @@ export default function PublicMenuDoors() {
                 </button>
               ))}
             </div>
-            {sector === "cantina" && breweryGroups.length > 1 && (
+            {grouped && breweryGroups.length > 1 && (
               <div className="mx-auto flex max-w-6xl gap-1.5 overflow-x-auto px-4 pb-2.5 sm:px-6" data-testid="brewery-shortcuts">
                 {breweryGroups.map((g) => (
                   <button
                     key={g.key}
                     type="button"
                     onClick={() => jumpTo(g.key)}
-                    className="h-7 shrink-0 rounded-full border border-[#A855F7]/40 bg-[#31182D]/60 px-3 text-xs font-medium text-[#F0ABFC] transition-[background-color,transform] duration-150 hover:bg-[#31182D] active:scale-95"
+                    className={cn("h-7 shrink-0 rounded-full border px-3 text-xs font-medium transition-[background-color,transform] duration-150 active:scale-95", groupTheme.chip)}
                     data-testid={`brewery-shortcut-${g.key}`}
                   >
                     {g.short}
@@ -333,7 +338,7 @@ export default function PublicMenuDoors() {
                 {t("no_results")}
               </p>
             )}
-            {sector === "cantina" ? (
+            {grouped ? (
               <>
                 <div className="grid gap-8" data-testid="sector-list">
                   {breweryGroups.map((g, gi) => {
@@ -345,8 +350,8 @@ export default function PublicMenuDoors() {
                         className="scroll-mt-60"
                         data-testid={`brewery-group-${g.key}`}
                       >
-                        <div className="mb-3 flex items-baseline justify-between gap-3 border-b border-[#A855F7]/30 pb-2">
-                          <h2 className="font-heading text-2xl leading-tight font-semibold text-[#F0ABFC]">{g.name}</h2>
+                        <div className={cn("mb-3 flex items-baseline justify-between gap-3 border-b pb-2", groupTheme.rule)}>
+                          <h2 className={cn("font-heading text-2xl leading-tight font-semibold", groupTheme.title)}>{g.name}</h2>
                           <span className="shrink-0 font-mono text-xs text-[#B5A799]">
                             {g.beers.length} {t(g.beers.length === 1 ? "beer_word_one" : "beers_word")}
                           </span>
