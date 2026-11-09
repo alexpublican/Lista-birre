@@ -127,11 +127,13 @@ export function useMyRatings() {
 // Tap beers sorted by tap number (unnumbered last), others by name.
 /** Nome breve del birrificio, senza "Brasserie", "Brouwerij"…: serve per ordinare e per le scorciatoie. */
 export const shortBrewery = (name: string) =>
-  name.replace(/^(brasserie|brouwerij|brewery|brauerei|birrificio|birra|geuzestekerij|bierbrouwerij)\s+/i, "").trim() || name;
+  name.replace(/^(brasserie|brouwerij|browerij|brewery|brauerei|birrificio|birra|geuzestekerij|gueuzerie|bierbrouwerij)\s+/i, "").trim() || name;
+/** Chiave per l'ordine alfabetico: ignora anche l'articolo "'t" ('t Verzet → Verzet). */
+const brewerySortKey = (name: string) => shortBrewery(name).replace(/^['’`]t\s+/i, "");
 
 /** Cantina: birrifici in ordine alfabetico, poi nome, poi annata (dalla più vecchia). Le esaurite in fondo al loro birrificio. */
 export const byBrewery = (a: Beer, b: Beer) =>
-  shortBrewery(a.birrificio).localeCompare(shortBrewery(b.birrificio), "it", { sensitivity: "base" }) ||
+  brewerySortKey(a.birrificio).localeCompare(brewerySortKey(b.birrificio), "it", { sensitivity: "base" }) ||
   Number(b.disponibile) - Number(a.disponibile) ||
   a.nome.localeCompare(b.nome, "it", { sensitivity: "base" }) ||
   (a.annata ?? 0) - (b.annata ?? 0);
