@@ -282,6 +282,21 @@ export default function PublicMenuDoors() {
                 </button>
               ))}
             </div>
+            {sector === "cantina" && breweryGroups.length > 1 && (
+              <div className="mx-auto flex max-w-6xl gap-1.5 overflow-x-auto px-4 pb-2.5 sm:px-6" data-testid="brewery-shortcuts">
+                {breweryGroups.map((g) => (
+                  <button
+                    key={g.key}
+                    type="button"
+                    onClick={() => jumpTo(g.key)}
+                    className="h-7 shrink-0 rounded-full border border-[#A855F7]/40 bg-[#31182D]/60 px-3 text-xs font-medium text-[#F0ABFC] transition-[background-color,transform] duration-150 hover:bg-[#31182D] active:scale-95"
+                    data-testid={`brewery-shortcut-${g.key}`}
+                  >
+                    {g.short}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6" data-testid={`sector-${sector}`}>
@@ -320,21 +335,6 @@ export default function PublicMenuDoors() {
             )}
             {sector === "cantina" ? (
               <>
-                {breweryGroups.length > 1 && (
-                  <div className="-mx-4 mb-5 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0" data-testid="brewery-shortcuts">
-                    {breweryGroups.map((g) => (
-                      <button
-                        key={g.key}
-                        type="button"
-                        onClick={() => jumpTo(g.key)}
-                        className="h-8 shrink-0 rounded-full border border-[#A855F7]/40 bg-[#31182D]/60 px-3 text-xs font-medium text-[#F0ABFC] transition-[background-color,transform] duration-150 hover:bg-[#31182D] active:scale-95"
-                        data-testid={`brewery-shortcut-${g.key}`}
-                      >
-                        {g.short}
-                      </button>
-                    ))}
-                  </div>
-                )}
                 <div className="grid gap-8" data-testid="sector-list">
                   {breweryGroups.map((g, gi) => {
                     const offset = breweryGroups.slice(0, gi).reduce((n, x) => n + x.beers.length, 0);
@@ -342,7 +342,7 @@ export default function PublicMenuDoors() {
                       <section
                         key={g.key}
                         id={`brewery-${g.key.replace(/[^a-z0-9]+/g, "-")}`}
-                        className="scroll-mt-48"
+                        className="scroll-mt-60"
                         data-testid={`brewery-group-${g.key}`}
                       >
                         <div className="mb-3 flex items-baseline justify-between gap-3 border-b border-[#A855F7]/30 pb-2">
