@@ -82,7 +82,7 @@ const DICT = {
   cask: { it: "Cask", en: "Cask", de: "Cask", fr: "Cask", es: "Cask" },
   handpump_taps: { it: "Spine Handpump", en: "Handpump taps", de: "Handpump-Zapfhähne", fr: "Tireuses à pompe", es: "Grifos handpump" },
   handpump_hint: { it: "Tocca le spine servite a pompa manuale: menu, TV e pannello le segnano HANDPUMP.", en: "Tap the hand-pulled taps: menu, TV and dashboard mark them HANDPUMP.", de: "Handgezapfte Hähne antippen: Karte, TV und Dashboard zeigen HANDPUMP.", fr: "Touchez les tireuses à pompe manuelle : menu, TV et tableau affichent HANDPUMP.", es: "Toca los grifos de bombeo manual: menú, TV y panel los marcan HANDPUMP." },
-  door_spina_sub: { it: "Le spine di oggi, numerate", en: "Today's taps, numbered", de: "Die Zapfhähne von heute", fr: "Les pressions du jour", es: "Los grifos de hoy" },
+  door_spina_sub: { it: "Le spine di oggi", en: "Today's taps", de: "Die Zapfhähne von heute", fr: "Les pressions du jour", es: "Los grifos de hoy" },
   door_frigo_sub: { it: "Bottiglie e lattine fresche", en: "Cold bottles and cans", de: "Kühle Flaschen und Dosen", fr: "Bouteilles et canettes fraîches", es: "Botellas y latas frías" },
   door_cantina_sub: { it: "Annate e rarità della cantina", en: "Vintages and cellar rarities", de: "Jahrgänge und Raritäten", fr: "Millésimes et raretés", es: "Añadas y rarezas de la bodega" },
   open_door: { it: "Entra", en: "Enter", de: "Öffnen", fr: "Entrer", es: "Entrar" },
