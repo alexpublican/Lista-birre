@@ -100,7 +100,7 @@ export default function BeerRow({
             )}
           </span>
           <span className="mt-0.5 block truncate text-xs text-[#BFB0A3]">
-            {[beer.stile, abv(beer.abv), beer.birrificio]
+            {[beer.birrificio, beer.stile, abv(beer.abv)]
               .filter(Boolean)
               .join(" · ")}
           </span>
