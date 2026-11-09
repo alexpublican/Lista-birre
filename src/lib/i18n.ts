@@ -217,6 +217,23 @@ const DICT = {
   poster: { it: "Poster QR", en: "QR poster", de: "QR-Poster", fr: "Affiche QR", es: "Póster QR" },
   print: { it: "Stampa", en: "Print", de: "Drucken", fr: "Imprimer", es: "Imprimir" },
   scan_title: { it: "Inquadra e scopri le birre di oggi", en: "Scan to see today's beers", de: "Scannen und die Biere von heute entdecken", fr: "Scannez pour découvrir les bières du jour", es: "Escanea y descubre las cervezas de hoy" },
+  admin_search: { it: "Cerca nome, birrificio, stile o annata…", en: "Search name, brewery, style or vintage…", de: "Name, Brauerei, Stil oder Jahrgang suchen…", fr: "Rechercher nom, brasserie, style ou millésime…", es: "Buscar nombre, cervecería, estilo o añada…" },
+  f_available: { it: "Disponibili", en: "Available", de: "Verfügbar", fr: "Disponibles", es: "Disponibles" },
+  f_last: { it: "Ultime bottiglie", en: "Last bottles", de: "Letzte Flaschen", fr: "Dernières bouteilles", es: "Últimas botellas" },
+  f_sold_out: { it: "Esaurite", en: "Sold out", de: "Ausverkauft", fr: "Épuisées", es: "Agotadas" },
+  f_arriving: { it: "In arrivo", en: "Coming", de: "Kommt bald", fr: "Bientôt", es: "Próximamente" },
+  f_no_photo: { it: "Senza foto", en: "No photo", de: "Ohne Foto", fr: "Sans photo", es: "Sin foto" },
+  f_no_abv: { it: "Senza gradazione", en: "No ABV", de: "Ohne Alkoholangabe", fr: "Sans degré", es: "Sin graduación" },
+  to_fix: { it: "Da sistemare", en: "To fix", de: "Zu erledigen", fr: "À compléter", es: "Por completar" },
+  show_label: { it: "Mostra", en: "Show", de: "Zeigen", fr: "Afficher", es: "Mostrar" },
+  expand_all: { it: "Apri tutti", en: "Expand all", de: "Alle öffnen", fr: "Tout ouvrir", es: "Abrir todos" },
+  collapse_all: { it: "Chiudi tutti", en: "Collapse all", de: "Alle schließen", fr: "Tout fermer", es: "Cerrar todos" },
+  tools: { it: "Strumenti", en: "Tools", de: "Werkzeuge", fr: "Outils", es: "Herramientas" },
+  added_one: { it: "Aggiunta una bottiglia", en: "One bottle added", de: "Eine Flasche hinzugefügt", fr: "Une bouteille ajoutée", es: "Una botella añadida" },
+  abv_missing: { it: "% ?", en: "% ?", de: "% ?", fr: "% ?", es: "% ?" },
+  history_show: { it: "Mostra storico", en: "Show history", de: "Verlauf zeigen", fr: "Afficher l'historique", es: "Mostrar histórico" },
+  history_hide: { it: "Nascondi storico", en: "Hide history", de: "Verlauf ausblenden", fr: "Masquer l'historique", es: "Ocultar histórico" },
+  breweries_word: { it: "birrifici", en: "breweries", de: "Brauereien", fr: "brasseries", es: "cervecerías" },
 } satisfies Record<string, Record<Lang, string>>;
 
 export type TKey = keyof typeof DICT;

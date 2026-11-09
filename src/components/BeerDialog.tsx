@@ -46,7 +46,7 @@ interface FormState {
   quantita: string;
 }
 
-function toForm(beer: Beer | null, presetTap?: number): FormState {
+function toForm(beer: Beer | null, presetTap?: number, presetLocation?: Location): FormState {
   return {
     nome: beer?.nome ?? "",
     birrificio: beer?.birrificio ?? "",
@@ -64,7 +64,7 @@ function toForm(beer: Beer | null, presetTap?: number): FormState {
     abbinamento_fr: beer?.abbinamento_fr ?? "",
     abbinamento_es: beer?.abbinamento_es ?? "",
     formati: (beer?.formati ?? []).map((f) => ({ nome: f.nome, prezzo: String(f.prezzo), tipo: f.tipo ?? "bottiglia" })),
-    posizione: beer?.posizione ?? "spina",
+    posizione: beer?.posizione ?? presetLocation ?? "spina",
     disponibile: beer?.disponibile ?? true,
     in_evidenza: beer?.in_evidenza ?? false,
     in_arrivo: beer?.in_arrivo ?? false,
@@ -83,16 +83,18 @@ export default function BeerDialog({
   open,
   beer,
   presetTap,
+  presetLocation,
   onOpenChange,
 }: {
   open: boolean;
   beer: Beer | null;
   presetTap?: number;
+  presetLocation?: Location;
   onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [form, setForm] = useState<FormState>(() => toForm(beer, presetTap));
+  const [form, setForm] = useState<FormState>(() => toForm(beer, presetTap, presetLocation));
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoRemoved, setPhotoRemoved] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
