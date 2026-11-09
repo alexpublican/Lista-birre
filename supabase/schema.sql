@@ -32,9 +32,12 @@ create table if not exists public.beers (
   archiviata boolean not null default false,
   archiviata_il timestamptz,
   foto_version text,
+  quantita integer check (quantita is null or quantita >= 0), -- bottiglie rimaste (solo gestione)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+-- per database già esistenti:
+alter table public.beers add column if not exists quantita integer check (quantita is null or quantita >= 0);
 create index if not exists beers_posizione_nome on public.beers (posizione, nome);
 
 -- Info locale: una sola riga (id = 'main') con i dati in JSON.

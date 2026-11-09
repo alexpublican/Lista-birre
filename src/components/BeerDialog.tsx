@@ -43,6 +43,7 @@ interface FormState {
   cask: boolean;
   annata: string;
   spina_n: string;
+  quantita: string;
 }
 
 function toForm(beer: Beer | null, presetTap?: number): FormState {
@@ -72,6 +73,7 @@ function toForm(beer: Beer | null, presetTap?: number): FormState {
     cask: beer?.cask ?? false,
     annata: beer?.annata ? String(beer.annata) : "",
     spina_n: beer?.spina_n != null ? String(beer.spina_n) : presetTap ? String(presetTap) : "0",
+    quantita: beer?.quantita != null ? String(beer.quantita) : "",
   };
 }
 
@@ -233,6 +235,7 @@ export default function BeerDialog({
       cask: form.cask,
       annata,
       spina_n: form.posizione === "spina" ? Number(form.spina_n) : 0,
+      quantita: form.posizione === "cantina" && form.quantita.trim() ? Number(form.quantita.trim()) : null,
     });
   };
 
@@ -367,6 +370,22 @@ export default function BeerDialog({
                 data-testid="beer-form-annata"
               />
               <p className="text-xs text-[#B8AAA0]">{t("vintage_hint")}</p>
+            </div>
+          )}
+          {form.posizione === "cantina" && (
+            <div className="grid gap-1.5">
+              <Label htmlFor="quantita">{t("stock")}</Label>
+              <Input
+                id="quantita"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="3"
+                className="w-32"
+                value={form.quantita}
+                onChange={(e) => set("quantita", e.target.value.replace(/\D/g, ""))}
+                data-testid="beer-form-quantita"
+              />
+              <p className="text-xs text-[#B8AAA0]">{t("stock_hint")}</p>
             </div>
           )}
           {(

@@ -22,6 +22,7 @@ import {
   TR_FIELDS,
   normalizeImportedBeer,
   parseBeerCreate,
+  publicBeer,
   parseBeerUpdate,
   parseSettings,
   vintage,
@@ -237,7 +238,10 @@ export async function sendPendingNotifications(env: Env, db: Db): Promise<void> 
   for (const b of beers) await notifyArrival(env, db, b, base);
 }
 
-on("GET", "/beers", async (c) => json(await c.db.select("beers", "select=*&order=posizione.asc,nome.asc&limit=1000")));
+on("GET", "/beers", async (c) => {
+  const rows = await c.db.select<Row>("beers", "select=*&order=posizione.asc,nome.asc&limit=1000");
+  return json((await isAdmin(c)) ? rows : rows.map(publicBeer));
+});
 
 let filling = false;
 /** Riempie solo le traduzioni VUOTE delle birre con testo italiano (non sovrascrive mai quelle scritte a mano). */
@@ -363,6 +367,7 @@ on(
     row.spina_n = row.spina_n || null;
     row.annata = vintage(row.annata);
     if (row.posizione !== "spina") row.spina_n = null;
+    if (row.quantita === 0) row.disponibile = false;
     await assertTapFree(c, row.spina_n as number | null, row.in_arrivo as boolean);
     if (String(row.descrizione).trim() || String(row.abbinamento).trim()) {
       const tr = await translateFields(c.env, String(row.descrizione), String(row.abbinamento));
@@ -408,6 +413,11 @@ on(
       const tr = await translateFields(c.env, newDesc, newPair);
       if (tr) Object.assign(changes, tr);
       else for (const f of TR_FIELDS) changes[f] = ""; // il controllo orario le riempirà
+    }
+    // Bottiglie finite → esaurita; ricaricate → di nuovo disponibile.
+    if (typeof changes.quantita === "number" && changes.quantita !== old.quantita) {
+      if (changes.quantita === 0) changes.disponibile = false;
+      else if (old.quantita === 0) changes.disponibile = true;
     }
     changes.updated_at = nowIso();
     const beer = await updateBeer(c, id, changes);

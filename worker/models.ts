@@ -139,6 +139,7 @@ export function parseBeerCreate(src: Row): Row {
   for (const [f, def] of BOOL_FIELDS) out[f] = c.bool(f) ?? def;
   out.annata = c.int("annata") ?? null;
   out.spina_n = c.int("spina_n", 0, TAP_COUNT) ?? null;
+  out.quantita = c.int("quantita", 0, 9999) ?? null;
   out.archiviata = c.bool("archiviata") ?? false;
   out.archiviata_il = typeof src.archiviata_il === "string" ? src.archiviata_il : null;
   c.done();
@@ -159,8 +160,16 @@ export function parseBeerUpdate(src: Row): Row {
   for (const [f] of BOOL_FIELDS) if (c.has(f)) out[f] = c.bool(f);
   if (c.has("annata")) out.annata = c.int("annata");
   if (c.has("spina_n")) out.spina_n = c.int("spina_n", 0, TAP_COUNT);
+  // quantita: null = non contata (va mandato esplicitamente per azzerare il conteggio)
+  if ("quantita" in src) out.quantita = src.quantita === null ? null : c.int("quantita", 0, 9999);
   c.done();
   return out;
+}
+
+/** Per i clienti: il numero di bottiglie resta privato, si dice solo se è l'ultima. */
+export function publicBeer(b: Row): Row {
+  const { quantita, ...rest } = b;
+  return { ...rest, quantita: null, ultima_bottiglia: quantita === 1 };
 }
 
 /** 0/null = nessuna annata; altrimenti un anno plausibile. */

@@ -381,6 +381,25 @@ export default function AdminDashboard() {
                         {b.disponibile ? t("available") : t("sold_out")}
                       </button>
                     )}
+                    {b.posizione === "cantina" && b.quantita != null && (
+                      <div className="mt-1 flex items-center gap-1.5" data-testid={`stock-${b.id}`}>
+                        <span className={cn("font-mono text-xs", b.quantita === 1 ? "text-[#F9A8D4]" : b.quantita === 0 ? "text-[#78716C]" : "text-[#BCAEA2]")}>
+                          {b.quantita} {t("bottles_short")}
+                        </span>
+                        {b.quantita > 0 && (
+                          <button
+                            type="button"
+                            title={t("sold_one")}
+                            aria-label={t("sold_one")}
+                            onClick={() => patch.mutate({ id: b.id, body: { quantita: (b.quantita ?? 1) - 1 } })}
+                            data-testid={`stock-minus-${b.id}`}
+                            className="grid size-6 place-items-center rounded-full border border-[#57422F] text-sm leading-none text-[#E7D9CC] transition-transform duration-150 hover:bg-[#2E241B] active:scale-90"
+                          >
+                            −
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">

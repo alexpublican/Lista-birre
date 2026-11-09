@@ -45,6 +45,8 @@ export interface Beer {
   cask: boolean;
   annata: number | null; // send 0 to clear
   spina_n: number | null;
+  quantita: number | null; // bottiglie rimaste: arriva solo all'area gestione (ai clienti sempre null)
+  ultima_bottiglia?: boolean; // solo per i clienti: true quando ne resta una
   archiviata: boolean;
   archiviata_il: string | null;
   foto_version: string | null;
@@ -75,13 +77,17 @@ export const localizedPairing = (b: Beer, lang: keyof typeof PAIR_FIELD) => b[PA
 export const localizedDesc = (b: Beer, lang: keyof typeof DESC_FIELD) => b[DESC_FIELD[lang]] || b.descrizione;
 
 // Mirrors BeerCreate
-export type BeerInput = Omit<Beer, "id" | "created_at" | "updated_at" | "archiviata" | "archiviata_il" | "foto_version">;
+export type BeerInput = Omit<Beer, "id" | "created_at" | "updated_at" | "archiviata" | "archiviata_il" | "foto_version" | "ultima_bottiglia">;
+
+/** "Ultima bottiglia": solo in Cantina e solo se la birra è disponibile. */
+export const isLastBottle = (b: Pick<Beer, "posizione" | "disponibile" | "in_arrivo" | "quantita" | "ultima_bottiglia">) =>
+  b.posizione === "cantina" && b.disponibile && !b.in_arrivo && (b.ultima_bottiglia === true || b.quantita === 1);
 
 export const photoUrl = (b: Pick<Beer, "id" | "foto_version">) =>
   b.foto_version ? `/api/beers/${b.id}/photo?v=${b.foto_version}` : null;
 
-/** Frigo: la foto è la bottiglia/lattina intera, quindi va mostrata tutta (non ritagliata) su fondo chiaro. */
-export const isBottlePhoto = (b: Pick<Beer, "posizione">) => b.posizione === "frigo";
+/** Frigo e Cantina: la foto è la bottiglia/lattina intera, quindi va mostrata tutta (non ritagliata) su fondo chiaro. */
+export const isBottlePhoto = (b: Pick<Beer, "posizione">) => b.posizione === "frigo" || b.posizione === "cantina";
 // Mirrors BeerUpdate (spina_n: 0 clears the tap number)
 export type BeerPatch = Partial<BeerInput>;
 

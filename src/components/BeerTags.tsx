@@ -1,6 +1,6 @@
-import { Barrel, Hand, Leaf, WineOff } from "lucide-react";
+import { Barrel, Hand, Hourglass, Leaf, WineOff } from "lucide-react";
 import type { Beer } from "@/lib/beers";
-import { useIsHandpump } from "@/lib/beers";
+import { isLastBottle, useIsHandpump } from "@/lib/beers";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,11 @@ export default function BeerTags({ beer, compact = false }: { beer: Beer; compac
   const icon = compact ? "size-2.5" : "size-3";
   return (
     <>
+      {isLastBottle(beer) && (
+        <span className={cn(TAG, size, "border-[#F472B6]/60 bg-[#3B0E2A] font-semibold tracking-wide text-[#F9A8D4] uppercase")} data-testid="beer-card-last-bottle">
+          <Hourglass className={icon} /> {t("last_bottle")}
+        </span>
+      )}
       {handpump && (
         <span className={cn(TAG, size, "border-[#D97706]/60 bg-[#2A1C0C] font-semibold tracking-wide text-[#FDBA74] uppercase")} data-testid="beer-card-handpump">
           <Hand className={icon} /> {t("handpump")}
