@@ -9,7 +9,7 @@ import HistoricHeader from "@/components/HistoricHeader";
 import BeerDialog from "@/components/BeerDialog";
 import SettingsDialog from "@/components/SettingsDialog";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
-import { BEERS_KEY, LOCATION_STYLE, LOCATIONS, STATS_KEY, TAP_COUNT, byTap, isGravity, photoUrl, useBeers, useIsHandpump, useSettings } from "@/lib/beers";
+import { BEERS_KEY, LOCATION_STYLE, LOCATIONS, STATS_KEY, TAP_COUNT, byTap, isBottlePhoto, isGravity, photoUrl, useBeers, useIsHandpump, useSettings } from "@/lib/beers";
 import ChangePinDialog from "@/components/ChangePinDialog";
 import BackupsDialog from "@/components/BackupsDialog";
 import TranslateAllDialog from "@/components/TranslateAllDialog";
@@ -321,7 +321,12 @@ export default function AdminDashboard() {
                         </span>
                       )}
                       {b.foto_version && (
-                        <img src={photoUrl(b) ?? undefined} alt="" className="size-9 shrink-0 rounded object-cover" data-testid="beer-row-photo" />
+                        <img
+                          src={photoUrl(b) ?? undefined}
+                          alt=""
+                          className={cn("size-9 shrink-0 rounded", isBottlePhoto(b) ? "bg-white object-contain p-px" : "object-cover")}
+                          data-testid="beer-row-photo"
+                        />
                       )}
                       <div>
                         <div className="font-medium text-[#FAF5EF]" data-testid="beer-row-name">{b.nome}</div>

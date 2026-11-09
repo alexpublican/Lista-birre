@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Cylinder, Hourglass, Maximize, Snowflake, Star, Beer as BeerIcon } from "lucide-react";
 import BrandMark from "@/components/BrandMark";
 import { apiGet } from "@/lib/api";
-import { BEERS_KEY, byTap, isGravity, photoUrl, useIsHandpump } from "@/lib/beers";
+import { BEERS_KEY, byTap, isBottlePhoto, isGravity, photoUrl, useIsHandpump } from "@/lib/beers";
 import type { Beer, Location } from "@/lib/beers";
 import { useI18n } from "@/lib/i18n";
 import type { TKey } from "@/lib/i18n";
@@ -93,7 +93,15 @@ function BeerTile({ beer, showLocation, next }: { beer: Beer; showLocation: bool
       )}
     >
       {photo && (
-        <img src={photo} alt="" className="aspect-square h-full max-h-[12vw] shrink-0 rounded-[0.6vw] object-cover" data-testid="tv-tap-photo" />
+        <img
+          src={photo}
+          alt=""
+          className={cn(
+            "h-full max-h-[12vw] shrink-0 rounded-[0.6vw]",
+            isBottlePhoto(beer) ? "aspect-[3/4] bg-white object-contain p-[0.3vw]" : "aspect-square object-cover",
+          )}
+          data-testid="tv-tap-photo"
+        />
       )}
       {tap != null && (
         <div

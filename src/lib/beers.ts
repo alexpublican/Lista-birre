@@ -79,6 +79,9 @@ export type BeerInput = Omit<Beer, "id" | "created_at" | "updated_at" | "archivi
 
 export const photoUrl = (b: Pick<Beer, "id" | "foto_version">) =>
   b.foto_version ? `/api/beers/${b.id}/photo?v=${b.foto_version}` : null;
+
+/** Frigo: la foto è la bottiglia/lattina intera, quindi va mostrata tutta (non ritagliata) su fondo chiaro. */
+export const isBottlePhoto = (b: Pick<Beer, "posizione">) => b.posizione === "frigo";
 // Mirrors BeerUpdate (spina_n: 0 clears the tap number)
 export type BeerPatch = Partial<BeerInput>;
 

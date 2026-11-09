@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import type { Beer } from "@/lib/beers";
-import { LOCATION_STYLE, isGravity, photoUrl } from "@/lib/beers";
+import { LOCATION_STYLE, isBottlePhoto, isGravity, photoUrl } from "@/lib/beers";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import BeerTags from "@/components/BeerTags";
@@ -45,7 +45,12 @@ export default function BeerRow({
               src={photo}
               alt={beer.nome}
               loading="lazy"
-              className="size-16 rounded-md border border-[#3D3126] object-cover sm:size-[4.5rem]"
+              className={cn(
+                "rounded-md border border-[#3D3126]",
+                isBottlePhoto(beer)
+                  ? "h-16 w-12 bg-white object-contain p-0.5 sm:h-[4.5rem] sm:w-14"
+                  : "size-16 object-cover sm:size-[4.5rem]",
+              )}
             />
             {onTap && (
               <span
