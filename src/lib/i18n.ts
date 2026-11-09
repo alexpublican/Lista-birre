@@ -260,5 +260,7 @@ export function useI18n() {
     new Intl.NumberFormat(LOCALES[lang], { style: "currency", currency: "EUR" }).format(v);
   const abv = (v: number) =>
     `${new Intl.NumberFormat(LOCALES[lang], { maximumFractionDigits: 1 }).format(v)}%`;
-  return { lang, t, price, abv };
+  // Gradazione per i clienti: 0 = "non nota" (non mostrata), tranne per le analcoliche.
+  const abvOf = (b: { abv: number; analcolica: boolean }) => (b.abv > 0 || b.analcolica ? abv(b.abv) : "");
+  return { lang, t, price, abv, abvOf };
 }

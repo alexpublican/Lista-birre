@@ -18,7 +18,7 @@ export default function BeerCard({
   featured?: boolean;
   showNotify?: boolean; // the sector layout shows "Avvisami" on the row instead
 }) {
-  const { t, lang, price, abv } = useI18n();
+  const { t, lang, price, abvOf } = useI18n();
   const s = LOCATION_STYLE[beer.posizione];
   const desc = localizedDesc(beer, lang);
   const pairing = localizedPairing(beer, lang);
@@ -125,9 +125,11 @@ export default function BeerCard({
             {beer.stile}
           </span>
         )}
-        <span className="font-mono text-[#E5D5C5]" data-testid="beer-card-abv">
-          {abv(beer.abv)}
-        </span>
+        {abvOf(beer) && (
+          <span className="font-mono text-[#E5D5C5]" data-testid="beer-card-abv">
+            {abvOf(beer)}
+          </span>
+        )}
         <BeerTags beer={beer} />
         {beer.in_arrivo ? (
           <span

@@ -16,7 +16,7 @@ export default function BeerRow({
   index: number;
   onOpen: (b: Beer) => void;
 }) {
-  const { t, price, abv } = useI18n();
+  const { t, price, abvOf } = useI18n();
   const s = LOCATION_STYLE[beer.posizione];
   const photo = photoUrl(beer);
   const out = !beer.disponibile && !beer.in_arrivo;
@@ -100,7 +100,7 @@ export default function BeerRow({
             )}
           </span>
           <span className="mt-0.5 block truncate text-xs text-[#BFB0A3]">
-            {[beer.birrificio, beer.stile, abv(beer.abv)]
+            {[beer.birrificio, beer.stile, abvOf(beer)]
               .filter(Boolean)
               .join(" · ")}
           </span>
