@@ -125,6 +125,30 @@ export function useMyRatings() {
 }
 
 // Tap beers sorted by tap number (unnumbered last), others by name.
+/** Nome breve del birrificio, senza "Brasserie", "Brouwerij"…: serve per ordinare e per le scorciatoie. */
+export const shortBrewery = (name: string) =>
+  name.replace(/^(brasserie|brouwerij|brewery|brauerei|birrificio|birra|geuzestekerij|bierbrouwerij)\s+/i, "").trim() || name;
+
+/** Cantina: birrifici in ordine alfabetico, poi nome, poi annata (dalla più vecchia). Le esaurite in fondo al loro birrificio. */
+export const byBrewery = (a: Beer, b: Beer) =>
+  shortBrewery(a.birrificio).localeCompare(shortBrewery(b.birrificio), "it", { sensitivity: "base" }) ||
+  Number(b.disponibile) - Number(a.disponibile) ||
+  a.nome.localeCompare(b.nome, "it", { sensitivity: "base" }) ||
+  (a.annata ?? 0) - (b.annata ?? 0);
+
+/** Raggruppa una lista già ordinata con byBrewery. */
+export function groupByBrewery(list: Beer[]): { key: string; name: string; short: string; beers: Beer[] }[] {
+  const groups: { key: string; name: string; short: string; beers: Beer[] }[] = [];
+  for (const b of list) {
+    const short = shortBrewery(b.birrificio) || "—";
+    const key = short.toLowerCase();
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.beers.push(b);
+    else groups.push({ key, name: b.birrificio || "—", short, beers: [b] });
+  }
+  return groups;
+}
+
 export const byTap = (a: Beer, b: Beer) =>
   (a.spina_n ?? 99) - (b.spina_n ?? 99) || a.nome.localeCompare(b.nome);
 // Mirrors TranslateAllResult / DescribeIn / DescribeOut

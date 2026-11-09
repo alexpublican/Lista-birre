@@ -10,7 +10,7 @@ import BeerRow from "@/components/BeerRow";
 import VenueInfo from "@/components/VenueInfo";
 import BrandMark from "@/components/BrandMark";
 import InstallButton from "@/components/InstallButton";
-import { LOCATIONS, byTap, useBeers, useSettings } from "@/lib/beers";
+import { LOCATIONS, byBrewery, byTap, groupByBrewery, useBeers, useSettings } from "@/lib/beers";
 import type { Beer, Location } from "@/lib/beers";
 import { useI18n } from "@/lib/i18n";
 import type { TKey } from "@/lib/i18n";
@@ -69,7 +69,9 @@ export default function PublicMenuDoors() {
   const coming = live.filter((b) => b.in_arrivo);
   const featured = onMenu.filter((b) => b.in_evidenza && b.disponibile);
   const bySector = (loc: Location) =>
-    onMenu.filter((b) => b.posizione === loc).sort((a, b) => Number(b.disponibile) - Number(a.disponibile) || byTap(a, b));
+    onMenu
+      .filter((b) => b.posizione === loc)
+      .sort(loc === "cantina" ? byBrewery : (a, b) => Number(b.disponibile) - Number(a.disponibile) || byTap(a, b));
 
   const go = (s: Location | null) => {
     setParams(s ? { s } : {});
@@ -92,6 +94,10 @@ export default function PublicMenuDoors() {
       );
 
   const sectorBeers = sector ? bySector(sector) : [];
+  // Cantina: blocchi per birrificio con scorciatoie in alto.
+  const breweryGroups = sector === "cantina" ? groupByBrewery(items) : [];
+  const jumpTo = (key: string) =>
+    document.getElementById(`brewery-${key.replace(/[^a-z0-9]+/g, "-")}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   const dietChips = [
     { key: "gluten-free", on: glutenFree, toggle: () => setGlutenFree((v) => !v), label: t("gluten_free"), Icon: Leaf, show: sectorBeers.some((b) => b.senza_glutine), active: "border-[#84CC16] bg-[#BEF264] text-[#12100E]" },
     { key: "alcohol-free", on: alcoholFree, toggle: () => setAlcoholFree((v) => !v), label: t("alcohol_free"), Icon: WineOff, show: sectorBeers.some((b) => b.analcolica), active: "border-[#38BDF8] bg-[#7DD3FC] text-[#12100E]" },
@@ -312,11 +318,56 @@ export default function PublicMenuDoors() {
                 {t("no_results")}
               </p>
             )}
-            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2" data-testid="sector-list">
-              {items.map((b, i) => (
-                <BeerRow key={b.id} beer={b} index={i} onOpen={setOpen} />
-              ))}
-            </div>
+            {sector === "cantina" ? (
+              <>
+                {breweryGroups.length > 1 && (
+                  <div className="-mx-4 mb-5 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0" data-testid="brewery-shortcuts">
+                    {breweryGroups.map((g) => (
+                      <button
+                        key={g.key}
+                        type="button"
+                        onClick={() => jumpTo(g.key)}
+                        className="h-8 shrink-0 rounded-full border border-[#A855F7]/40 bg-[#31182D]/60 px-3 text-xs font-medium text-[#F0ABFC] transition-[background-color,transform] duration-150 hover:bg-[#31182D] active:scale-95"
+                        data-testid={`brewery-shortcut-${g.key}`}
+                      >
+                        {g.short}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="grid gap-8" data-testid="sector-list">
+                  {breweryGroups.map((g, gi) => {
+                    const offset = breweryGroups.slice(0, gi).reduce((n, x) => n + x.beers.length, 0);
+                    return (
+                      <section
+                        key={g.key}
+                        id={`brewery-${g.key.replace(/[^a-z0-9]+/g, "-")}`}
+                        className="scroll-mt-48"
+                        data-testid={`brewery-group-${g.key}`}
+                      >
+                        <div className="mb-3 flex items-baseline justify-between gap-3 border-b border-[#A855F7]/30 pb-2">
+                          <h2 className="font-heading text-2xl leading-tight font-semibold text-[#F0ABFC]">{g.name}</h2>
+                          <span className="shrink-0 font-mono text-xs text-[#B5A799]">
+                            {g.beers.length} {t(g.beers.length === 1 ? "beer_word_one" : "beers_word")}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+                          {g.beers.map((b, i) => (
+                            <BeerRow key={b.id} beer={b} index={offset + i} onOpen={setOpen} />
+                          ))}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2" data-testid="sector-list">
+                {items.map((b, i) => (
+                  <BeerRow key={b.id} beer={b} index={i} onOpen={setOpen} />
+                ))}
+              </div>
+            )}
 
             {sectorComing.length > 0 && (
               <section className="mt-10" data-testid="sector-coming-soon">

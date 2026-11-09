@@ -206,6 +206,7 @@ const DICT = {
   kind_daily: { it: "Automatico", en: "Automatic", de: "Automatisch", fr: "Automatique", es: "Automático" },
   kind_manual: { it: "Manuale", en: "Manual", de: "Manuell", fr: "Manuel", es: "Manual" },
   "kind_pre-restore": { it: "Prima del ripristino", en: "Before restore", de: "Vor Wiederherstellung", fr: "Avant restauration", es: "Antes de restaurar" },
+  beer_word_one: { it: "birra", en: "beer", de: "Bier", fr: "bière", es: "cerveza" },
   beers_word: { it: "birre", en: "beers", de: "Biere", fr: "bières", es: "cervezas" },
   archived: { it: "Spostata nello storico", en: "Moved to history", de: "In den Verlauf verschoben", fr: "Déplacée dans l'historique", es: "Movida al histórico" },
   no_free_tap: { it: "Nessuna spina libera: assegna il numero a mano", en: "No free tap: set the number manually", de: "Kein Hahn frei: Nummer manuell setzen", fr: "Aucune pression libre : attribuez le numéro", es: "Ningún grifo libre: asigna el número manualmente" },
