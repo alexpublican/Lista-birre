@@ -35,6 +35,11 @@ export interface Beer {
   abbinamento_de: string;
   abbinamento_fr: string;
   abbinamento_es: string;
+  // Traduzioni automatiche dello stile (vuote/null finché il server non le ha fatte)
+  stile_en?: string | null;
+  stile_de?: string | null;
+  stile_fr?: string | null;
+  stile_es?: string | null;
   formati: Formato[];
   posizione: Location;
   disponibile: boolean;
@@ -73,11 +78,15 @@ export const PAIR_FIELD: Record<"it" | "en" | "de" | "fr" | "es", PairKey> = {
 };
 export const localizedPairing = (b: Beer, lang: keyof typeof PAIR_FIELD) => b[PAIR_FIELD[lang]] || b.abbinamento;
 
+// Style in the current language, falling back to the Italian original.
+export const localizedStyle = (b: Beer, lang: keyof typeof DESC_FIELD) =>
+  (lang === "it" ? "" : b[`stile_${lang}` as "stile_en"]) || b.stile;
+
 // Description in the current language, falling back to the Italian original.
 export const localizedDesc = (b: Beer, lang: keyof typeof DESC_FIELD) => b[DESC_FIELD[lang]] || b.descrizione;
 
 // Mirrors BeerCreate
-export type BeerInput = Omit<Beer, "id" | "created_at" | "updated_at" | "archiviata" | "archiviata_il" | "foto_version" | "ultima_bottiglia">;
+export type BeerInput = Omit<Beer, "id" | "created_at" | "updated_at" | "archiviata" | "archiviata_il" | "foto_version" | "ultima_bottiglia" | "stile_en" | "stile_de" | "stile_fr" | "stile_es">;
 
 /** "Ultima bottiglia": solo in Cantina e solo se la birra è disponibile. */
 export const isLastBottle = (b: Pick<Beer, "posizione" | "disponibile" | "in_arrivo" | "quantita" | "ultima_bottiglia">) =>

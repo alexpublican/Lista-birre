@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import type { Beer } from "@/lib/beers";
-import { LOCATION_STYLE, isBottlePhoto, isGravity, photoUrl } from "@/lib/beers";
+import { LOCATION_STYLE, isBottlePhoto, isGravity, localizedStyle, photoUrl } from "@/lib/beers";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import BeerTags from "@/components/BeerTags";
@@ -16,7 +16,7 @@ export default function BeerRow({
   index: number;
   onOpen: (b: Beer) => void;
 }) {
-  const { t, price, abvOf } = useI18n();
+  const { t, lang, price, abvOf } = useI18n();
   const s = LOCATION_STYLE[beer.posizione];
   const photo = photoUrl(beer);
   const out = !beer.disponibile && !beer.in_arrivo;
@@ -100,7 +100,7 @@ export default function BeerRow({
             )}
           </span>
           <span className="mt-0.5 block truncate text-xs text-[#BFB0A3]">
-            {[beer.birrificio, beer.stile, abvOf(beer)]
+            {[beer.birrificio, localizedStyle(beer, lang), abvOf(beer)]
               .filter(Boolean)
               .join(" · ")}
           </span>

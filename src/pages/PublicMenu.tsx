@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import HistoricHeader from "@/components/HistoricHeader";
 import BeerCard from "@/components/BeerCard";
-import { LOCATIONS, byTap, useBeers, useSettings } from "@/lib/beers";
+import { LOCATIONS, byTap, localizedStyle, useBeers, useSettings } from "@/lib/beers";
 import VenueInfo from "@/components/VenueInfo";
 import BrandMark from "@/components/BrandMark";
 import InstallButton from "@/components/InstallButton";
@@ -26,7 +26,7 @@ const PILL_ACTIVE: Record<Filter, string> = {
 };
 
 export default function PublicMenu() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { data, isError, isLoading } = useBeers();
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
@@ -52,9 +52,9 @@ export default function PublicMenu() {
         (!st || b.stile.toLowerCase().includes(st)) &&
         (!glutenFree || b.senza_glutine) &&
         (!alcoholFree || b.analcolica) &&
-        (!needle || [b.nome, b.birrificio, b.stile].some((f) => f.toLowerCase().includes(needle))),
+        (!needle || [b.nome, b.birrificio, b.stile, localizedStyle(b, lang)].some((f) => f.toLowerCase().includes(needle))),
     );
-  }, [live, filter, q, style, glutenFree, alcoholFree]);
+  }, [live, filter, q, style, glutenFree, alcoholFree, lang]);
   const dietChips = [
     { key: "gluten-free", on: glutenFree, toggle: () => setGlutenFree((v) => !v), label: t("gluten_free"), Icon: Leaf, show: live.some((b) => b.senza_glutine), active: "border-[#84CC16] bg-[#BEF264] text-[#12100E]" },
     { key: "alcohol-free", on: alcoholFree, toggle: () => setAlcoholFree((v) => !v), label: t("alcohol_free"), Icon: WineOff, show: live.some((b) => b.analcolica), active: "border-[#38BDF8] bg-[#7DD3FC] text-[#12100E]" },

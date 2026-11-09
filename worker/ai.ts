@@ -1,6 +1,6 @@
 // Google Gemini (chiave del proprietario): traduzioni dall'italiano e testi suggeriti.
 import type { Env } from "./env";
-import { LANGS, type Row } from "./models";
+import { LANGS, TR_BASES, TR_MAX, type Row, type TrBase } from "./models";
 
 const DEFAULT_MODEL = "gemini-3-flash-preview";
 const TIMEOUT_MS = 25_000;
@@ -8,11 +8,17 @@ const BATCH_SIZE = 8; // il piano gratuito di Gemini consente ~5 richieste al mi
 
 const TRANSLATE_SYSTEM =
   "You translate texts for the beer menu of Birreria Cassina, a historic Italian pub. " +
-  "Translate the Italian beer description and food pairing into English, German, French and Spanish (Spain). " +
-  "Keep a natural, appetising menu tone, keep beer style names, brewery names and units as they are, " +
-  "and do not add information. Reply with JSON only, no markdown, exactly in this shape: " +
-  '{"en":{"descrizione":"...","abbinamento":"..."},"de":{...},"fr":{...},"es":{...}}. ' +
-  'If an Italian field is empty, return "" for it in every language.';
+  "Translate the Italian fields of a beer (descrizione = description, abbinamento = food pairing, " +
+  "stile = beer style) into English, German, French and Spanish (Spain). " +
+  "Keep a natural, appetising menu tone, keep brewery names and units as they are, and do not add information. " +
+  "For stile: keep internationally used style names unchanged (IPA, Session IPA, Gueuze, Lambic, Kriek, Saison, " +
+  "Stout, Porter, Pils, Weizen, Doppelbock, Rauchbier, Barley Wine, Sour…) and translate only the Italian words " +
+  "around them, in the word order natural for each language " +
+  '(e.g. "Gueuze al rabarbaro" → en "Rhubarb Gueuze", de "Rhabarber-Gueuze", fr "Gueuze à la rhubarbe", ' +
+  'es "Gueuze con ruibarbo"; "Lambic invecchiato in botte" → en "Barrel-aged Lambic"). ' +
+  "If stile has no Italian words, return it unchanged. Reply with JSON only, no markdown, exactly in this shape: " +
+  '{"en":{"descrizione":"...","abbinamento":"...","stile":"..."},"de":{...},"fr":{...},"es":{...}}. ' +
+  'Translate only the fields you receive; if an Italian field is empty, return "" for it in every language.';
 
 const BATCH_SYSTEM = TRANSLATE_SYSTEM.replace(
   "Reply with JSON only, no markdown, exactly in this shape: ",
@@ -63,53 +69,56 @@ function parseJson(raw: string): Row {
   return JSON.parse(raw.replace(/^```json/, "").replace(/^```/, "").replace(/```$/, "").trim());
 }
 
-export function emptyTranslations(): Row {
+/** Testi italiani da tradurre: solo i campi presenti vengono tradotti (e restituiti). */
+export type TrSource = Partial<Record<TrBase, string>>;
+
+const hasText = (src: TrSource) => TR_BASES.some((b) => (src[b] ?? "").trim());
+
+export function emptyTranslations(src: TrSource): Row {
   const out: Row = {};
-  for (const l of LANGS) {
-    out[`descrizione_${l}`] = "";
-    out[`abbinamento_${l}`] = "";
-  }
+  for (const l of LANGS) for (const b of TR_BASES) if (b in src) out[`${b}_${l}`] = "";
   return out;
 }
 
-function fieldsFrom(data: Row, descrizione: string, abbinamento: string): Row {
+function fieldsFrom(data: Row, src: TrSource): Row {
   const out: Row = {};
   for (const l of LANGS) {
     const tr = (data[l] ?? {}) as Row;
     if (!data[l]) throw new Error(`lingua ${l} mancante`);
-    out[`descrizione_${l}`] = descrizione.trim() ? String(tr.descrizione ?? "").trim().slice(0, 1000) : "";
-    out[`abbinamento_${l}`] = abbinamento.trim() ? String(tr.abbinamento ?? "").trim().slice(0, 300) : "";
+    for (const b of TR_BASES) {
+      if (!(b in src)) continue;
+      out[`${b}_${l}`] = (src[b] ?? "").trim() ? String(tr[b] ?? "").trim().slice(0, TR_MAX[b]) : "";
+    }
   }
   return out;
 }
 
 /** Traduzioni di una birra, oppure null se il servizio non risponde (il salvataggio prosegue). */
-export async function translateFields(env: Env, descrizione: string, abbinamento: string): Promise<Row | null> {
-  if (!descrizione.trim() && !abbinamento.trim()) return emptyTranslations();
+export async function translateFields(env: Env, src: TrSource): Promise<Row | null> {
+  if (!hasText(src)) return emptyTranslations(src);
   try {
-    const raw = await ask(env, TRANSLATE_SYSTEM, JSON.stringify({ descrizione, abbinamento }), { json: true });
-    return fieldsFrom(parseJson(raw), descrizione, abbinamento);
+    const raw = await ask(env, TRANSLATE_SYSTEM, JSON.stringify(src), { json: true });
+    return fieldsFrom(parseJson(raw), src);
   } catch (e) {
     console.warn("auto-translation failed:", String(e).slice(0, 300));
     return null;
   }
 }
 
-/** items: [{id, descrizione, abbinamento}] → {id: campi tradotti}; le birre fallite mancano. */
-export async function translateMany(
-  env: Env,
-  items: { id: string; descrizione: string; abbinamento: string }[],
-): Promise<Record<string, Row>> {
+/** items: [{id, src}] → {id: campi tradotti}; le birre fallite mancano. */
+export async function translateMany(env: Env, items: { id: string; src: TrSource }[]): Promise<Record<string, Row>> {
   const out: Record<string, Row> = {};
-  for (let i = 0; i < items.length; i += BATCH_SIZE) {
-    const batch = items.slice(i, i + BATCH_SIZE);
+  const todo = items.filter((it) => hasText(it.src));
+  for (const it of items) if (!hasText(it.src)) out[it.id] = emptyTranslations(it.src);
+  for (let i = 0; i < todo.length; i += BATCH_SIZE) {
+    const batch = todo.slice(i, i + BATCH_SIZE);
     const payload: Row = {};
-    for (const b of batch) payload[b.id] = { descrizione: b.descrizione, abbinamento: b.abbinamento };
+    for (const b of batch) payload[b.id] = b.src;
     try {
       const data = parseJson(await ask(env, BATCH_SYSTEM, JSON.stringify(payload), { json: true, timeout: 90_000 }));
       for (const b of batch) {
         try {
-          out[b.id] = fieldsFrom(data[b.id] as Row, b.descrizione, b.abbinamento);
+          out[b.id] = fieldsFrom(data[b.id] as Row, b.src);
         } catch (e) {
           console.warn("batch translation missing", b.id, String(e));
         }

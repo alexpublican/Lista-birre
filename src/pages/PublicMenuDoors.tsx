@@ -10,7 +10,7 @@ import BeerRow from "@/components/BeerRow";
 import VenueInfo from "@/components/VenueInfo";
 import BrandMark from "@/components/BrandMark";
 import InstallButton from "@/components/InstallButton";
-import { LOCATIONS, byBrewery, byTap, groupByBrewery, useBeers, useSettings } from "@/lib/beers";
+import { LOCATIONS, byBrewery, byTap, groupByBrewery, localizedStyle, useBeers, useSettings } from "@/lib/beers";
 import type { Beer, Location } from "@/lib/beers";
 import { useI18n } from "@/lib/i18n";
 import type { TKey } from "@/lib/i18n";
@@ -52,7 +52,7 @@ const isLocation = (v: string | null): v is Location => LOCATIONS.includes(v as 
 
 /** Trial layout: three big "doors" (Spina / Frigo / Cantina) → compact list → full card on request. */
 export default function PublicMenuDoors() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { data, isError, isLoading } = useBeers();
   const settings = useSettings();
   const styleChips = settings.isError ? [] : (settings.data?.stili_filtro ?? []);
@@ -90,7 +90,7 @@ export default function PublicMenuDoors() {
           (!st || b.stile.toLowerCase().includes(st)) &&
           (!glutenFree || b.senza_glutine) &&
           (!alcoholFree || b.analcolica) &&
-          (!needle || [b.nome, b.birrificio, b.stile].some((f) => f.toLowerCase().includes(needle))),
+          (!needle || [b.nome, b.birrificio, b.stile, localizedStyle(b, lang)].some((f) => f.toLowerCase().includes(needle))),
       );
 
   const sectorBeers = sector ? bySector(sector) : [];
@@ -141,7 +141,7 @@ export default function PublicMenuDoors() {
                     <span className="font-heading block text-base leading-tight font-semibold text-[#FFF9F2]">{b.nome}</span>
                     <span className="block text-[11px] text-[#D6B98C]">
                       {b.posizione === "spina" && b.spina_n ? `${t("tap_n")} ${b.spina_n} · ` : `${t(b.posizione)} · `}
-                      {b.stile}
+                      {localizedStyle(b, lang)}
                     </span>
                   </button>
                 ))}

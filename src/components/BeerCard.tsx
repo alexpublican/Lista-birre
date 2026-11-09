@@ -1,7 +1,7 @@
 import { Clock, Star, UtensilsCrossed } from "lucide-react";
 import BeerTags from "@/components/BeerTags";
 import type { Beer } from "@/lib/beers";
-import { LOCATION_STYLE, isBottlePhoto, isGravity, localizedDesc, localizedPairing, photoUrl } from "@/lib/beers";
+import { LOCATION_STYLE, isBottlePhoto, isGravity, localizedDesc, localizedPairing, localizedStyle, photoUrl } from "@/lib/beers";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import RatingStars from "@/components/RatingStars";
@@ -122,7 +122,7 @@ export default function BeerCard({
         </span>
         {beer.stile && (
           <span className="rounded-full border border-[#57422F] px-2.5 py-0.5 text-[#E5D5C5]" data-testid="beer-card-style">
-            {beer.stile}
+            {localizedStyle(beer, lang)}
           </span>
         )}
         {abvOf(beer) && (

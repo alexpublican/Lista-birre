@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Cylinder, Hourglass, Maximize, Snowflake, Star, Beer as BeerIcon } from "lucide-react";
 import BrandMark from "@/components/BrandMark";
 import { apiGet } from "@/lib/api";
-import { BEERS_KEY, byTap, isBottlePhoto, isGravity, photoUrl, useIsHandpump } from "@/lib/beers";
+import { BEERS_KEY, byTap, isBottlePhoto, isGravity, localizedStyle, photoUrl, useIsHandpump } from "@/lib/beers";
 import type { Beer, Location } from "@/lib/beers";
 import { useI18n } from "@/lib/i18n";
 import type { TKey } from "@/lib/i18n";
@@ -73,7 +73,7 @@ function NextUp({ beer, tap }: { beer: Beer; tap: number }) {
 }
 
 function BeerTile({ beer, showLocation, next }: { beer: Beer; showLocation: boolean; next?: Beer }) {
-  const { t, price, abvOf } = useI18n();
+  const { t, lang, price, abvOf } = useI18n();
   const a = ACCENT[beer.posizione];
   const tap = beer.posizione === "spina" && beer.spina_n != null ? beer.spina_n : null;
   const gravity = isGravity(tap);
@@ -140,7 +140,7 @@ function BeerTile({ beer, showLocation, next }: { beer: Beer; showLocation: bool
           )}
         </div>
         <p className="truncate text-[1.15vw] text-[#BFB0A3]">
-          {[beer.birrificio, beer.stile, abvOf(beer)].filter(Boolean).join(" · ")}
+          {[beer.birrificio, localizedStyle(beer, lang), abvOf(beer)].filter(Boolean).join(" · ")}
         </p>
         <div className="mt-auto flex flex-wrap items-center gap-x-[1.4vw] gap-y-[0.3vw] pt-[0.6vw] text-[1.2vw]">
           {beer.formati.map((f, i) => (

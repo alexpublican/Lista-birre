@@ -1,5 +1,5 @@
 // Tutte le API del sito sotto /api — stesso comportamento del vecchio backend FastAPI.
-import { AiUnavailable, describeBeer, suggestPairing, translateFields, translateMany } from "./ai";
+import { AiUnavailable, describeBeer, suggestPairing, translateFields, translateMany, type TrSource } from "./ai";
 import { Db, enc } from "./db";
 import { arrivalEmail, sendEmail } from "./email";
 import type { Ctx, Env } from "./env";
@@ -19,7 +19,10 @@ import {
 import {
   GRAVITY_TAP,
   TAP_COUNT,
+  LANGS,
+  TR_BASES,
   TR_FIELDS,
+  type TrBase,
   normalizeImportedBeer,
   parseBeerCreate,
   publicBeer,
@@ -243,13 +246,16 @@ on("GET", "/beers", async (c) => {
   return json((await isAdmin(c)) ? rows : rows.map(publicBeer));
 });
 
+/** I testi italiani da tradurre di una birra. */
+const srcOf = (d: Row): TrSource => Object.fromEntries(TR_BASES.map((b) => [b, String(d[b] ?? "")]));
+
 let filling = false;
 /** Riempie solo le traduzioni VUOTE delle birre con testo italiano (non sovrascrive mai quelle scritte a mano). */
 export async function fillMissingTranslations(env: Env, db: Db): Promise<number> {
   if (filling) return 0;
   filling = true;
   try {
-    const docs = await db.select<Row>("beers", `select=id,descrizione,abbinamento,${TR_FIELDS.join(",")}&limit=1000`);
+    const docs = await db.select<Row>("beers", `select=id,${TR_BASES.join(",")},${TR_FIELDS.join(",")}&limit=1000`);
     const missing = (d: Row) =>
       TR_FIELDS.filter((f) => {
         const base = f.slice(0, f.lastIndexOf("_"));
@@ -257,9 +263,15 @@ export async function fillMissingTranslations(env: Env, db: Db): Promise<number>
       });
     const todo = docs.filter((d) => missing(d).length);
     if (!todo.length) return 0;
+    // Si traducono solo i campi che hanno almeno una lingua mancante.
     const done = await translateMany(
       env,
-      todo.map((d) => ({ id: String(d.id), descrizione: String(d.descrizione ?? ""), abbinamento: String(d.abbinamento ?? "") })),
+      todo.map((d) => {
+        const bases = new Set(missing(d).map((f) => f.slice(0, f.lastIndexOf("_")) as TrBase));
+        const src: TrSource = {};
+        for (const b of bases) src[b] = String(d[b] ?? "");
+        return { id: String(d.id), src };
+      }),
     );
     let n = 0;
     for (const d of todo) {
@@ -289,10 +301,10 @@ on(
   "POST",
   "/beers/translate-all",
   admin(async (c) => {
-    const docs = await c.db.select<Row>("beers", "select=id,descrizione,abbinamento&limit=1000");
+    const docs = await c.db.select<Row>("beers", `select=id,${TR_BASES.join(",")}&limit=1000`);
     const items = docs
-      .filter((d) => String(d.descrizione ?? "").trim() || String(d.abbinamento ?? "").trim())
-      .map((d) => ({ id: String(d.id), descrizione: String(d.descrizione ?? ""), abbinamento: String(d.abbinamento ?? "") }));
+      .filter((d) => TR_BASES.some((b) => String(d[b] ?? "").trim()))
+      .map((d) => ({ id: String(d.id), src: srcOf(d) }));
     const done = await translateMany(c.env, items);
     const now = nowIso();
     for (const [bid, tr] of Object.entries(done)) await c.db.update("beers", `id=eq.${enc(bid)}`, { ...tr, updated_at: now });
@@ -369,8 +381,8 @@ on(
     if (row.posizione !== "spina") row.spina_n = null;
     if (row.quantita === 0) row.disponibile = false;
     await assertTapFree(c, row.spina_n as number | null, row.in_arrivo as boolean);
-    if (String(row.descrizione).trim() || String(row.abbinamento).trim()) {
-      const tr = await translateFields(c.env, String(row.descrizione), String(row.abbinamento));
+    if (TR_BASES.some((b) => String(row[b] ?? "").trim())) {
+      const tr = await translateFields(c.env, srcOf(row));
       if (tr) Object.assign(row, tr);
       // se fallisce, il controllo orario riempirà le traduzioni mancanti
     }
@@ -406,13 +418,16 @@ on(
     } else if (tap !== null && tap !== undefined && ("spina_n" in changes || "in_arrivo" in changes)) {
       await assertTapFree(c, tap, waiting, id);
     }
-    // Testo italiano cambiato → EN/DE/FR/ES vengono riscritte (sostituiscono quelle manuali).
-    const newDesc = String(changes.descrizione ?? old.descrizione ?? "");
-    const newPair = String(changes.abbinamento ?? old.abbinamento ?? "");
-    if (newDesc !== String(old.descrizione ?? "") || newPair !== String(old.abbinamento ?? "")) {
-      const tr = await translateFields(c.env, newDesc, newPair);
+    // Testo italiano cambiato → EN/DE/FR/ES di QUEL campo vengono riscritte (sostituiscono quelle manuali).
+    const changed: TrSource = {};
+    for (const b of TR_BASES) {
+      const v = String(changes[b] ?? old[b] ?? "");
+      if (v !== String(old[b] ?? "")) changed[b] = v;
+    }
+    if (Object.keys(changed).length) {
+      const tr = await translateFields(c.env, changed);
       if (tr) Object.assign(changes, tr);
-      else for (const f of TR_FIELDS) changes[f] = ""; // il controllo orario le riempirà
+      else for (const b of Object.keys(changed)) for (const l of LANGS) changes[`${b}_${l}`] = ""; // il controllo orario le riempirà
     }
     // Bottiglie finite → esaurita; ricaricate → di nuovo disponibile.
     if (typeof changes.quantita === "number" && changes.quantita !== old.quantita) {

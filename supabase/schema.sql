@@ -19,6 +19,11 @@ create table if not exists public.beers (
   abbinamento_de text not null default '',
   abbinamento_fr text not null default '',
   abbinamento_es text not null default '',
+  -- traduzioni dello stile: possono essere null (backup vecchi senza questi campi)
+  stile_en text default '',
+  stile_de text default '',
+  stile_fr text default '',
+  stile_es text default '',
   formati jsonb not null default '[]'::jsonb,
   posizione text not null check (posizione in ('spina', 'frigo', 'cantina')),
   disponibile boolean not null default true,
@@ -38,6 +43,10 @@ create table if not exists public.beers (
 );
 -- per database già esistenti:
 alter table public.beers add column if not exists quantita integer check (quantita is null or quantita >= 0);
+alter table public.beers add column if not exists stile_en text default '';
+alter table public.beers add column if not exists stile_de text default '';
+alter table public.beers add column if not exists stile_fr text default '';
+alter table public.beers add column if not exists stile_es text default '';
 create index if not exists beers_posizione_nome on public.beers (posizione, nome);
 
 -- Info locale: una sola riga (id = 'main') con i dati in JSON.

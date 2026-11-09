@@ -4,7 +4,11 @@ import { HttpError } from "./http";
 export const TAP_COUNT = 12; // spine 1..11 + 12 = "Botte a caduta"
 export const GRAVITY_TAP = 12;
 export const LANGS = ["en", "de", "fr", "es"] as const;
-export const TR_FIELDS = LANGS.flatMap((l) => [`descrizione_${l}`, `abbinamento_${l}`]);
+/** Campi scritti in italiano e tradotti in automatico (EN/DE/FR/ES). */
+export const TR_BASES = ["descrizione", "abbinamento", "stile"] as const;
+export type TrBase = (typeof TR_BASES)[number];
+export const TR_MAX: Record<TrBase, number> = { descrizione: 1000, abbinamento: 300, stile: 120 };
+export const TR_FIELDS = LANGS.flatMap((l) => TR_BASES.map((b) => `${b}_${l}`));
 
 export type Row = Record<string, unknown>;
 
@@ -84,6 +88,7 @@ const STR_FIELDS: [string, number, number][] = [
   ["nome", 1, 120],
   ["birrificio", 0, 120],
   ["stile", 0, 80],
+  ...LANGS.map((l) => [`stile_${l}`, 0, 120] as [string, number, number]),
   ["descrizione", 0, 1000],
   ...LANGS.map((l) => [`descrizione_${l}`, 0, 1000] as [string, number, number]),
   ["abbinamento", 0, 300],
