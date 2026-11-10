@@ -48,7 +48,7 @@ const unsplash = (id: string, w = 1000) => `https://images.unsplash.com/${id}?cr
 const PHOTO = {
   bere: unsplash("photo-1567696911980-2eed69a46042", 1400),
   birre: unsplash("photo-1546622891-02c72c1537b6", 1400),
-  cibo: unsplash("photo-1606149059549-6042addafc5a", 1400),
+  cibo: unsplash("photo-1762806883627-4bcbfad98a2c", 1400),
   vini: unsplash("photo-1624216503641-ab4a72cada46"),
   distillati: unsplash("photo-1760982192590-de2b005bb4d5"),
   bar: unsplash("photo-1640735099606-8181a8c8f5a7"),
