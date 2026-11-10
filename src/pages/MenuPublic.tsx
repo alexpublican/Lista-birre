@@ -237,7 +237,7 @@ function Tags({ v }: { v: Voce }) {
     <>
       {v.evidenza && <span className="tagp tg-ev">In evidenza</span>}
       {v.novita && <span className="tagp tg-new">Novità</span>}
-      {v.vegano && <span className="tagp tg-veg">Vegano</span>}
+      {v.vegano && <span className="tagp tg-veg">Vegetariano</span>}
       {v.piccante && <span className="tagp tg-hot">Piccante</span>}
       {v.disponibile === false && <span className="tagp tg-out">Esaurito</span>}
     </>
@@ -293,7 +293,7 @@ function Row({ k, v, i, group }: { k: SettoreKey; v: Voce; i: number; group: str
 }
 
 function TextBox({ s }: { s: Sezione }) {
-  const veg = /vegan/i.test(s.titolo);
+  const veg = /vegan|vegetar/i.test(s.titolo);
   return (
     <div className={`dbox${veg ? " vegan" : ""}`}>
       <h3>

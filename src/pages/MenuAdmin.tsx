@@ -446,7 +446,7 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
             <Check label="Disponibile" on={f.disponibile} set={(x) => set("disponibile", x)} />
             <Check label="In evidenza" on={f.evidenza} set={(x) => set("evidenza", x)} />
             <Check label="Novità" on={f.novita} set={(x) => set("novita", x)} />
-            {k === "cibo" && <Check label="Vegano" on={f.vegano} set={(x) => set("vegano", x)} />}
+            {k === "cibo" && <Check label="Vegetariano" on={f.vegano} set={(x) => set("vegano", x)} />}
             {k === "cibo" && <Check label="Piccante" on={f.piccante} set={(x) => set("piccante", x)} />}
           </div>
         </div>
