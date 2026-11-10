@@ -4,6 +4,18 @@ Copia del sito "lista-emergent" senza la parte Emergent. Aspetto e funzioni sono
 menu pubblico (porte Spina / Frigo / Cantina, `/classico`), area gestione con PIN (`/admin`),
 poster QR (`/poster`), schermo TV (`/tv`), avvisi email, voti, foto, logo, backup, traduzioni AI.
 
+## Menù completo (cucina, vini, distillati, caffetteria)
+
+La pagina iniziale `/` divide **Cosa bere** e **Cosa mangiare**:
+- `/birre` — la lista birre di sempre (Spina / Frigo / Cantina)
+- `/bere` — scelta tra Birre, Vini, Distillati, Caffetteria e bibite
+- `/menu/cibo`, `/menu/vini`, `/menu/distillati`, `/menu/bar` — i menù, con la lavagna degli speciali del giorno in cima al cibo
+- `/menu/<settore>/<voce>` — scheda del singolo articolo
+- `/admin/menu` — gestione (stesso PIN delle birre; pulsante "Cucina e bar" nella dashboard)
+
+I dati stanno in Supabase nella tabella `settings`, riga `menu` (un documento JSON);
+a ogni salvataggio la versione precedente resta nella riga `menu_prev`. Il menù è incluso in "Esporta file" dei backup.
+
 ## Com'è fatto
 
 | Parte | Dove | Cosa fa |

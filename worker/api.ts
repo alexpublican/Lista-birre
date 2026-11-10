@@ -217,7 +217,7 @@ export async function notifyArrival(env: Env, db: Db, beer: Row, base: string | 
   let sent = 0;
   for (const s of subs) {
     const unsub = base ? `${base}/disiscriviti?token=${s.token}` : null;
-    const { subject, html } = arrivalEmail(s.lang || "it", String(beer.nome), String(beer.birrificio ?? ""), base ? `${base}/` : null, unsub);
+    const { subject, html } = arrivalEmail(s.lang || "it", String(beer.nome), String(beer.birrificio ?? ""), base ? `${base}/birre` : null, unsub);
     try {
       await sendEmail(env, s.email, subject, html);
     } catch (e) {
@@ -613,6 +613,54 @@ on(
   }),
 );
 
+// ------------------------------------------------------------------ menù cucina, vini, distillati, caffetteria
+// Tutto il menù sta in un unico documento JSON nella tabella settings (riga id = "menu").
+// A ogni salvataggio la versione precedente viene copiata nella riga "menu_prev" (paracadute).
+const MENU_KEYS = ["cibo", "vini", "distillati", "bar"] as const;
+const MENU_MAX_BYTES = 400_000;
+
+function parseMenu(body: Row): Row {
+  const settori = body.settori as Row | undefined;
+  if (!settori || typeof settori !== "object") throw new HttpError(422, "Menù non valido");
+  for (const k of MENU_KEYS) {
+    const list = settori[k];
+    if (!Array.isArray(list)) throw new HttpError(422, `Menù non valido: manca ${k}`);
+    for (const s of list as Row[]) {
+      if (!s || typeof s !== "object" || typeof s.id !== "string" || typeof s.titolo !== "string")
+        throw new HttpError(422, "Sezione non valida");
+      if (s.voci !== undefined) {
+        if (!Array.isArray(s.voci)) throw new HttpError(422, "Voci non valide");
+        for (const v of s.voci as Row[])
+          if (!v || typeof v !== "object" || typeof v.id !== "string" || typeof v.nome !== "string")
+            throw new HttpError(422, "Voce non valida");
+      }
+    }
+  }
+  const note = Array.isArray(body.note_finali) ? (body.note_finali as unknown[]).filter((n) => typeof n === "string") : [];
+  const clean: Row = { versione: 1, settori: Object.fromEntries(MENU_KEYS.map((k) => [k, settori[k]])), note_finali: note };
+  if (JSON.stringify(clean).length > MENU_MAX_BYTES) throw new HttpError(413, "Menù troppo grande");
+  return clean;
+}
+
+async function loadMenu(db: Db): Promise<Row | null> {
+  const doc = await db.one<{ data: Row }>("settings", "select=data&id=eq.menu");
+  return doc?.data ?? null;
+}
+
+on("GET", "/menu", async (c) => json(await loadMenu(c.db)));
+
+on(
+  "PUT",
+  "/menu",
+  admin(async (c) => {
+    const clean = parseMenu(await readJson(c.req));
+    const prev = await loadMenu(c.db);
+    if (prev) await c.db.insert("settings", { id: "menu_prev", data: prev }, { onConflict: "id" });
+    await c.db.insert("settings", { id: "menu", data: clean }, { onConflict: "id" });
+    return json(clean);
+  }),
+);
+
 // ------------------------------------------------------------------ immagini
 function imageType(bytes: Uint8Array): string | null {
   if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
@@ -769,6 +817,7 @@ on(
       beers,
       settings: { id: "main", ...settings },
       ratings,
+      menu: await loadMenu(c.db),
       assets: [],
       asset_urls,
     });
@@ -827,7 +876,20 @@ on(
     } catch {
       throw new HttpError(400, "File di backup non valido");
     }
+    let menu: Row | null = null;
+    if (data.menu && typeof data.menu === "object") {
+      try {
+        menu = parseMenu(data.menu as Row);
+      } catch {
+        menu = null; // un menù rovinato nel file non blocca il ripristino delle birre
+      }
+    }
     const safety = await c.db.rpc<string>("apply_snapshot", { p_snap: { beers, settings, ratings } });
+    if (menu) {
+      const prev = await loadMenu(c.db);
+      if (prev) await c.db.insert("settings", { id: "menu_prev", data: prev }, { onConflict: "id" });
+      await c.db.insert("settings", { id: "menu", data: menu }, { onConflict: "id" });
+    }
     const info: BackupInfo = { id: "import", created_at: nowIso(), kind: "manual", beer_count: beers.length };
     return json({ restored: info, safety_backup_id: safety });
   }),

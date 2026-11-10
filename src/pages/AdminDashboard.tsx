@@ -24,6 +24,7 @@ import {
   Star,
   Trash2,
   Tv,
+  UtensilsCrossed,
   Wrench,
   X,
 } from "lucide-react";
@@ -368,6 +369,9 @@ export default function AdminDashboard() {
                 {toolLink(<QrCode className="size-4" />, t("poster"), "/poster", "poster-link")}
               </PopoverContent>
             </Popover>
+            <Link to="/admin/menu" className={buttonVariants({ variant: "outline" })} data-testid="food-menu-link">
+              <UtensilsCrossed className="size-4" /> <span className="hidden sm:inline">Cucina e bar</span>
+            </Link>
             <Link to="/" className={buttonVariants({ variant: "outline" })} data-testid="view-menu-link">
               <Eye className="size-4" /> <span className="hidden sm:inline">{t("back_menu")}</span>
             </Link>
