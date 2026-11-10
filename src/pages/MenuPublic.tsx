@@ -43,6 +43,18 @@ import "@/menu.css";
 const ICON: Record<SettoreKey, LucideIcon> = { cibo: UtensilsCrossed, vini: Wine, distillati: Martini, bar: Coffee };
 const Ic = ({ I }: { I: LucideIcon }) => <I className="i" aria-hidden />;
 
+// Foto di sfondo delle schede (stesso stile delle porte Spina/Frigo/Cantina della Lista Birre).
+const unsplash = (id: string, w = 1000) => `https://images.unsplash.com/${id}?crop=entropy&cs=srgb&fm=jpg&ixlib=rb-4.1.0&q=75&w=${w}`;
+const PHOTO = {
+  bere: unsplash("photo-1567696911980-2eed69a46042", 1400),
+  birre: unsplash("photo-1546622891-02c72c1537b6", 1400),
+  cibo: unsplash("photo-1606149059549-6042addafc5a", 1400),
+  vini: unsplash("photo-1624216503641-ab4a72cada46"),
+  distillati: unsplash("photo-1760982192590-de2b005bb4d5"),
+  bar: unsplash("photo-1640735099606-8181a8c8f5a7"),
+} satisfies Record<SettoreKey | "bere" | "birre", string>;
+const Photo = ({ src }: { src: string }) => <img className="bgphoto" src={src} alt="" decoding="async" />;
+
 // Gruppi aperti nel menù cibo: restano aperti mentre si naviga avanti e indietro.
 const openGroups = new Set<string>();
 
@@ -118,9 +130,7 @@ export function MenuIngresso() {
           <div className="halves">
             <Link className="half t-bere foam" style={{ animationDelay: "60ms" }} to="/bere" data-testid="entry-bere">
               <span className="bgart" />
-              <span className="bgicon">
-                <Ic I={BeerIcon} />
-              </span>
+              <Photo src={PHOTO.bere} />
               <span className="shade" />
               <span className="k">Birre · vini · distillati · caffè</span>
               <h2>
@@ -132,9 +142,7 @@ export function MenuIngresso() {
             </Link>
             <Link className="half t-mangiare foam" style={{ animationDelay: "140ms" }} to="/menu/cibo" data-testid="entry-mangiare">
               <span className="bgart" />
-              <span className="bgicon">
-                <Ic I={UtensilsCrossed} />
-              </span>
+              <Photo src={PHOTO.cibo} />
               <span className="shade" />
               <span className="k">Cucina · panini · dolci</span>
               <h2>
@@ -161,9 +169,7 @@ export function MenuBere() {
     return (
       <Link key={k} className={`door foam t-${k}`} style={{ animationDelay: `${i * 70}ms` }} to={`/menu/${k}`} data-testid={`bere-${k}`}>
         <span className="bgart" />
-        <span className="bgicon">
-          <Ic I={ICON[k]} />
-        </span>
+        <Photo src={PHOTO[k]} />
         <span className="shade" />
         <span className="ic">
           <Ic I={ICON[k]} />
@@ -206,9 +212,7 @@ export function MenuBere() {
         </section>
         <Link className="door foam t-birre" to="/birre" style={{ minHeight: 200, marginBottom: 16, borderRadius: 16 }} data-testid="bere-birre">
           <span className="bgart" />
-          <span className="bgicon" style={{ left: "auto", right: -10, top: -10, transform: "none" }}>
-            <Ic I={BeerIcon} />
-          </span>
+          <Photo src={PHOTO.birre} />
           <span className="shade" />
           <span className="ic">
             <Ic I={BeerIcon} />
@@ -417,7 +421,6 @@ export function MenuSettore() {
     : [];
 
   const S = SET[k];
-  const SIcon = ICON[k];
   return (
     <Shell notes={m?.note_finali}>
       <div className={`secbar t-${k}`}>
@@ -466,9 +469,8 @@ export function MenuSettore() {
       <main className={`wrap t-${k}`}>
         <div className="banner">
           <span className="bgart" />
-          <span className="bgicon">
-            <Ic I={SIcon} />
-          </span>
+          <Photo src={PHOTO[k]} />
+          <span className="shade" />
           <div className="in">
             <div>
               <h1>{S.label}</h1>

@@ -62,7 +62,7 @@
 .mx .door:hover .bgicon{transform:scale(1.06) rotate(-4deg)}
 @media(min-width:768px){.mx .door .bgicon{right:auto;left:50%;top:70px;transform:translateX(-50%);font-size:170px}
 .mx .door:hover .bgicon{transform:translateX(-50%) scale(1.06)}}
-.mx .door .shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(18,16,14,.05) 0%,rgba(18,16,14,.6) 50%,rgba(18,16,14,.95) 100%)}
+.mx .door .shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(18,16,14,.25) 0%,rgba(18,16,14,.75) 45%,rgba(18,16,14,.97) 100%)}
 .mx .count{position:absolute;top:16px;right:16px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(18,16,14,.7);padding:4px 12px;font-family:var(--mono);font-size:12px;color:var(--fg);backdrop-filter:blur(12px)}
 @media(min-width:768px){.mx .count{top:48px;right:50%;transform:translateX(50%)}}
 .mx .count b{font-weight:600}
@@ -81,6 +81,12 @@
 .mx .dbox.vegan{border-color:rgba(132,204,22,.45)}
 .mx .dbox.vegan h3 svg{color:#BEF264}
 .mx .dbox p{margin:0;font-size:14px;color:var(--mtx);line-height:1.5}
+/* foto di sfondo delle schede (come le porte della Lista Birre) */
+.mx .bgphoto{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;opacity:.7;transition:transform .5s}
+.mx .half .bgphoto{z-index:-2}
+.mx .door:hover .bgphoto,.mx .half:hover .bgphoto{transform:scale(1.05)}
+.mx .banner .bgphoto{z-index:0}
+.mx .banner .in{z-index:1}
 /* entry */
 .mx .entry{display:flex;flex-direction:column;min-height:100svh}
 .mx .entry-top{display:flex;flex-direction:column;align-items:center;text-align:center;padding:28px 16px 18px}
@@ -101,7 +107,7 @@
 .mx .half .bgicon{position:absolute;right:-24px;top:-18px;z-index:-2;font-size:190px;color:var(--c);opacity:.14;transition:transform .5s}
 .mx .half:hover .bgicon{transform:scale(1.06) rotate(-5deg)}
 @media(min-width:768px){.mx .half .bgicon{font-size:280px;right:-30px;top:10px}}
-.mx .half .shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(18,16,14,0) 20%,rgba(18,16,14,.7) 65%,rgba(18,16,14,.95) 100%)}
+.mx .half .shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(18,16,14,.2) 0%,rgba(18,16,14,.65) 50%,rgba(18,16,14,.96) 100%)}
 .mx .half .k{font-family:var(--mono);font-size:11px;letter-spacing:.25em;text-transform:uppercase;color:var(--ct);opacity:.9}
 .mx .half h2{margin:6px 0 0;font-family:var(--head);font-weight:700;line-height:.95;letter-spacing:-.02em;color:#FFF9F2;font-size:46px}
 .mx .half h2 em{font-style:normal;color:var(--ct);display:block}
@@ -139,6 +145,8 @@
 .mx .banner{position:relative;margin:24px 0;overflow:hidden;border-radius:12px;border:1px solid var(--border)}
 .mx .banner .bgart{position:absolute;inset:0;background:radial-gradient(80% 140% at 100% 0%,color-mix(in srgb,var(--c) 30%,transparent),transparent 60%),linear-gradient(90deg,rgba(18,16,14,.95),rgba(18,16,14,.6)),#15110E}
 .mx .banner .bgicon{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:110px;color:var(--c);opacity:.14}
+.mx .banner .bgphoto{opacity:.4}
+.mx .banner .shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(18,16,14,.92),rgba(18,16,14,.35))}
 .mx .banner .in{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:20px}
 .mx .banner h1{font-family:var(--head);font-size:36px;line-height:1;font-weight:700;letter-spacing:-.02em;color:var(--ct);margin:0}
 .mx .banner p{margin:6px 0 0;font-size:14px;color:#DFCFC0}
