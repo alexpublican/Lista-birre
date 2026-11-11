@@ -9,11 +9,13 @@ import Unsubscribe from "@/pages/Unsubscribe";
 import TvScreen from "@/pages/TvScreen";
 import { MenuBere, MenuIngresso, MenuSettore, MenuVoce } from "@/pages/MenuPublic";
 import MenuAdmin from "@/pages/MenuAdmin";
+import { NavMemory } from "@/lib/nav";
 
 // One <Route> per page in src/pages; BrowserRouter already wraps this in main.tsx.
 export default function App() {
   return (
     <>
+      <NavMemory />
       <Routes>
         <Route path="/" element={<MenuIngresso />} />
         <Route path="/birre" element={<PublicMenuDoors />} />

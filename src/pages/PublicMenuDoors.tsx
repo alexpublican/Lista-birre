@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { previousPath } from "@/lib/nav";
 import { ArrowLeft, ArrowRight, Beer as BeerIcon, Clock, Leaf, Lock, Search, Snowflake, Star, Warehouse, WineOff } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -57,6 +58,7 @@ export default function PublicMenuDoors() {
   const settings = useSettings();
   const styleChips = settings.isError ? [] : (settings.data?.stili_filtro ?? []);
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const sector = isLocation(params.get("s")) ? (params.get("s") as Location) : null;
   const [open, setOpen] = useState<Beer | null>(null);
   const [q, setQ] = useState("");
@@ -74,10 +76,11 @@ export default function PublicMenuDoors() {
       .sort(loc !== "spina" ? byBrewery : (a, b) => Number(b.disponibile) - Number(a.disponibile) || byTap(a, b));
 
   const go = (s: Location | null) => {
-    setParams(s ? { s } : {});
     setQ("");
     setStyle(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // "Tutti i settori": se arrivo dalle porte faccio un vero "indietro" (come il tasto del telefono)
+    if (!s && previousPath() === "/birre") navigate(-1);
+    else setParams(s ? { s } : {});
   };
   useEffect(() => setOpen(null), [sector]);
 

@@ -1,7 +1,8 @@
 // Pagine pubbliche del menù: ingresso (Cosa bere / Cosa mangiare), hub "Cosa bere",
 // elenco di un settore (cibo, vini, distillati, caffetteria) e scheda del singolo articolo.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigationType, useParams, useSearchParams } from "react-router-dom";
+import { BackLink } from "@/lib/nav";
 import {
   ArrowLeft,
   ArrowRight,
@@ -197,9 +198,9 @@ export function MenuBere() {
     <Shell notes={m?.note_finali}>
       <main className="wrap" style={{ paddingBottom: 56 }}>
         <div className="crumbs" style={{ marginTop: 20 }}>
-          <Link className="back" to="/">
+          <BackLink className="back" to="/">
             <Ic I={ArrowLeft} /> Inizio
-          </Link>
+          </BackLink>
           <Link className="c2" to="/menu/cibo">
             Vai a Cosa mangiare →
           </Link>
@@ -385,14 +386,18 @@ export function MenuSettore() {
 
   useEffect(() => setQ(""), [k]);
   // Arrivo da una scheda: riapro e mostro il gruppo da cui si era partiti.
+  // Tornando indietro con la cronologia la posizione la rimette NavMemory: qui serve solo
+  // quando si arriva con un link nuovo (es. scheda aperta da un link condiviso).
+  const navType = useNavigationType();
   const fromGroup = (location.state as { group?: string } | null)?.group;
   useEffect(() => {
     if (!fromGroup || !menu.data) return;
     openGroups.add(fromGroup);
     setTick((t) => t + 1);
-    const t = setTimeout(() => document.getElementById(`g-${fromGroup}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    if (navType === "POP") return;
+    const t = setTimeout(() => document.getElementById(`g-${fromGroup}`)?.scrollIntoView({ block: "start" }), 60);
     return () => clearTimeout(t);
-  }, [fromGroup, menu.data]);
+  }, [fromGroup, menu.data, navType]);
 
   if (!k) return <Navigate to="/" replace />;
   const m = menu.data;
@@ -464,9 +469,9 @@ export function MenuSettore() {
       <div className={`secbar t-${k}`}>
         <div className="wrap">
           <div className="r1">
-            <Link className="back" to={k === "cibo" ? "/" : "/bere"}>
+            <BackLink className="back" to={k === "cibo" ? "/" : "/bere"}>
               <Ic I={ArrowLeft} /> {k === "cibo" ? "Inizio" : "Cosa bere"}
-            </Link>
+            </BackLink>
             <nav className="tabs">
               {k === "cibo" ? (
                 <>
@@ -606,7 +611,6 @@ export function MenuVoce() {
   const menu = useMenu();
   const m = menu.data;
   const x = useMemo(() => (m && id ? findItem(m, id) : undefined), [m, id]);
-  useEffect(() => window.scrollTo(0, 0), [id]);
 
   if (!isSettore(settore)) return <Navigate to="/" replace />;
   if (!m) return <Shell><Loading menu={menu} /></Shell>;
@@ -618,12 +622,12 @@ export function MenuVoce() {
     <Shell notes={m.note_finali}>
       <main className={`itemwrap t-${k}`}>
         <div className="crumbs">
-          <Link className="back" to={`/menu/${k}`} state={{ group: s.id }}>
+          <BackLink className="back" to={`/menu/${k}`} state={{ group: s.id }}>
             <Ic I={ArrowLeft} /> {SET[k].short || SET[k].label}
-          </Link>
-          <Link className="c2" to={`/menu/${k}`} state={{ group: s.id }}>
+          </BackLink>
+          <BackLink className="c2" to={`/menu/${k}`} state={{ group: s.id }}>
             {s.lavagna ? "Speciali del giorno" : s.titolo}
-          </Link>
+          </BackLink>
         </div>
         <article className={`card foam${v.disponibile === false ? " out" : ""}`} data-testid="menu-item-card">
           {v.evidenza && (
