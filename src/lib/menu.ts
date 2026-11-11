@@ -50,7 +50,7 @@ export const SET: Record<SettoreKey, { label: string; short?: string; sub: strin
   cibo: { label: "Cosa mangiare", short: "Cibo", sub: "Stuzzichini, piatti, panini e dolci fatti in casa", word: ["piatto", "piatti"] },
   vini: { label: "Vini", sub: "Bianchi, rossi e bollicine al calice o in bottiglia", word: ["vino", "vini"] },
   distillati: { label: "Distillati", sub: "Amari, grappe, rum, cognac e whisky", word: ["proposta", "proposte"] },
-  bar: { label: "Caffetteria e bibite", short: "Caffè e bibite", sub: "Caffè, tè e tisane, bibite e succhi", word: ["proposta", "proposte"] },
+  bar: { label: "Caffetteria e bibite", short: "Caffè e bibite", sub: "Caffè, tè e tisane, aperitivi, bibite e succhi", word: ["proposta", "proposte"] },
 };
 
 export const MENU_KEY = ["menu"] as const;
