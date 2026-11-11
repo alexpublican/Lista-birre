@@ -536,7 +536,7 @@ function Allergeni({ v }: { v: Voce }) {
         <span className="alg-dot" aria-hidden>
           i
         </span>
-        <span className="alg-lab">Informazioni allergeni</span>
+        <span className="alg-lab">Allergeni</span>
         <ChevronDown className="i alg-chev" aria-hidden />
       </button>
       <div className="alg-wrap" id={pid} role="region" aria-label="Allergeni" inert={!open}>

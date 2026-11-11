@@ -563,7 +563,7 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
           </div>
           {(k === "cibo" || f.allergeniLista.length > 0 || f.senzaAllergeni || f.allergeni) && (
             <div className="fld">
-              <label>Allergeni (i clienti li vedono toccando "Informazioni allergeni")</label>
+              <label>Allergeni (i clienti li vedono toccando "Allergeni" in fondo alla scheda)</label>
               <div className="alg-pick">
                 {ALLERGENI.map((a) => (
                   <Check
