@@ -236,13 +236,41 @@ export function MenuBere() {
 }
 
 // ------------------------------------------------------------------ pezzi comuni
-function Tags({ v }: { v: Voce }) {
+// Simboli compatti per l'elenco: fogliolina (vegetariano) e peperoncino (piccante).
+const VegIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden>
+    <path d="M5 19C5 10.5 10 5.5 19.5 4.5 19.5 14 14.5 19 5 19Z" fill="currentColor" />
+    <path d="M5 19 13.5 10.5" fill="none" stroke="#14210A" strokeWidth="1.6" strokeLinecap="round" />
+  </svg>
+);
+const HotIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden>
+    <path d="M15.6 8.2C13 6.9 9.6 7.7 8.2 10.6 6.6 14 6.2 17.4 3.2 20.6c4.6.6 9.2-1.4 11.6-5 1.8-2.6 2.2-5 .8-7.4Z" fill="currentColor" />
+    <path d="M15.6 8.2c.2-1.9 1.3-3.2 3.2-3.8M13.2 7.6c1.2-.9 2.9-1 4.3-.1" fill="none" stroke="#86C25A" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+function Tags({ v, icons }: { v: Voce; icons?: boolean }) {
   return (
     <>
       {v.evidenza && <span className="tagp tg-ev">In evidenza</span>}
       {v.novita && <span className="tagp tg-new">Novità</span>}
-      {v.vegano && <span className="tagp tg-veg">Vegetariano</span>}
-      {v.piccante && <span className="tagp tg-hot">Piccante</span>}
+      {v.vegano &&
+        (icons ? (
+          <span className="tgi tg-veg" title="Vegetariano" aria-label="Vegetariano" role="img">
+            <VegIcon />
+          </span>
+        ) : (
+          <span className="tagp tg-veg">Vegetariano</span>
+        ))}
+      {v.piccante &&
+        (icons ? (
+          <span className="tgi tg-hot" title="Piccante" aria-label="Piccante" role="img">
+            <HotIcon />
+          </span>
+        ) : (
+          <span className="tagp tg-hot">Piccante</span>
+        ))}
       {v.disponibile === false && <span className="tagp tg-out">Esaurito</span>}
     </>
   );
@@ -289,7 +317,7 @@ function Row({ k, v, i, group }: { k: SettoreKey; v: Voce; i: number; group: str
         <span className="nm">{v.nome}</span>
         {sub && <span className="sub">{sub}</span>}
         <span className="tags">
-          <Tags v={v} />
+          <Tags v={v} icons />
         </span>
       </span>
       <span className="rt">

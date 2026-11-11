@@ -178,6 +178,9 @@
 .mx .tg-ev{border-color:rgba(245,158,11,.6);background:#3B260E;color:var(--gold)}
 .mx .tg-veg{border-color:#84CC16;background:rgba(190,242,100,.12);color:#BEF264}
 .mx .tg-hot{border-color:#F97316;background:rgba(249,115,22,.12);color:#FDBA74}
+.mx .tgi{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:999px;border:1px solid;flex:none}
+.mx .tgi svg{width:13px;height:13px;display:block}
+.mx .tgi.tg-hot{color:#F87171;border-color:#EF4444;background:rgba(239,68,68,.12)}
 .mx .tg-new{border-color:#38BDF8;background:rgba(125,211,252,.12);color:#7DD3FC}
 .mx .tg-out{border-color:#44403C;background:#292524;color:#A8A29E}
 .mx .tg-pair{border-color:#57422F;color:#E5D5C5}
