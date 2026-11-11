@@ -12,7 +12,9 @@ import type { AdminMe } from "@/lib/beers";
 import {
   MENU_KEY,
   SET,
+  ALLERGENI,
   SETTORI,
+  allergeniOf,
   eur,
   fotoUrl,
   hasSizes,
@@ -20,6 +22,7 @@ import {
   today,
   uniqueId,
   useMenu,
+  type AllergeneKey,
   type MenuData,
   type SettoreKey,
   type Sezione,
@@ -334,6 +337,8 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
     abbinamento: v.abbinamento ?? "",
     nota: v.nota ?? "",
     allergeni: v.allergeni ?? "",
+    allergeniLista: allergeniOf(v).map((a) => a.k) as AllergeneKey[],
+    senzaAllergeni: !!v.senza_allergeni,
     disponibile: v.disponibile !== false,
     evidenza: !!v.evidenza,
     novita: !!v.novita,
@@ -402,6 +407,11 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
       const p = num(f.prezzo);
       if (p != null) nv.prezzo = p;
     }
+    const al = ALLERGENI.filter((a) => f.allergeniLista.includes(a.k)).map((a) => a.k);
+    if (al.length) nv.allergeni_lista = al;
+    else delete nv.allergeni_lista;
+    if (f.senzaAllergeni && !al.length) nv.senza_allergeni = true;
+    else delete nv.senza_allergeni;
     nv.disponibile = f.disponibile;
     for (const key of ["evidenza", "novita", "vegano", "piccante"] as const) {
       if (f[key]) nv[key] = true;
@@ -551,10 +561,39 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
             <label>Nota</label>
             <input value={f.nota} onChange={(e) => set("nota", e.target.value)} placeholder="es. Non si effettuano aggiunte" />
           </div>
-          {k === "cibo" && (
+          {(k === "cibo" || f.allergeniLista.length > 0 || f.senzaAllergeni || f.allergeni) && (
             <div className="fld">
-              <label>Allergeni</label>
-              <input value={f.allergeni} onChange={(e) => set("allergeni", e.target.value)} placeholder="es. glutine, latte, uova" />
+              <label>Allergeni (i clienti li vedono toccando "Informazioni allergeni")</label>
+              <div className="alg-pick">
+                {ALLERGENI.map((a) => (
+                  <Check
+                    key={a.k}
+                    label={`${a.n} · ${a.it}`}
+                    on={f.allergeniLista.includes(a.k)}
+                    set={(x) =>
+                      setF((o) => ({
+                        ...o,
+                        senzaAllergeni: x ? false : o.senzaAllergeni,
+                        allergeniLista: x ? [...o.allergeniLista, a.k] : o.allergeniLista.filter((y) => y !== a.k),
+                      }))
+                    }
+                  />
+                ))}
+              </div>
+              <div className="checks" style={{ marginTop: 8 }}>
+                <Check
+                  label="Nessuno dei 14 allergeni"
+                  on={f.senzaAllergeni && !f.allergeniLista.length}
+                  set={(x) => setF((o) => ({ ...o, senzaAllergeni: x, allergeniLista: x ? [] : o.allergeniLista }))}
+                />
+              </div>
+              <input
+                style={{ marginTop: 8 }}
+                value={f.allergeni}
+                onChange={(e) => set("allergeni", e.target.value)}
+                placeholder="Note (facoltative), es. può contenere tracce di frutta a guscio"
+              />
+              <p className="hint">Se non segni nulla, il cliente legge "Chiedi pure al nostro personale".</p>
             </div>
           )}
           <div className="checks">

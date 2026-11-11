@@ -260,8 +260,28 @@
 .mx .pairing .lab{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
 .mx .pairing .val{margin-top:6px;font-family:var(--head);font-size:18px;color:#FFF9F2}
 .mx .inote{margin-top:14px;font-size:14px;color:#FCA5A5}
-.mx .allerg{margin-top:14px;font-size:13px;color:var(--mtx)}
-.mx .allerg b{color:#E5D5C5;font-weight:600}
+/* allergeni: pulsante discreto in fondo alla scheda, pannello che si apre al tocco */
+.mx .alg{margin-top:22px;padding-top:14px;border-top:1px solid rgba(217,119,6,.18)}
+.mx .alg-btn{display:inline-flex;align-items:center;gap:9px;border-radius:999px;border:1px solid rgba(217,119,6,.35);padding:6px 14px 6px 6px;font-size:12px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:#D9C7B5;transition:border-color .2s,background-color .2s,color .2s}
+.mx .alg-btn:hover,.mx .alg.is-open .alg-btn{border-color:rgba(245,158,11,.7);color:var(--gold);background:rgba(59,38,14,.45)}
+.mx .alg-btn:focus-visible{outline:2px solid var(--brass2);outline-offset:2px}
+.mx .alg-dot{display:grid;place-items:center;width:22px;height:22px;border-radius:999px;border:1px solid rgba(245,158,11,.55);font-family:var(--head);font-style:italic;font-weight:600;font-size:13px;letter-spacing:0;text-transform:none;color:var(--gold)}
+.mx .alg-chev{transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.mx .alg.is-open .alg-chev{transform:rotate(180deg)}
+.mx .alg-wrap{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .4s cubic-bezier(.2,.8,.2,1),opacity .3s}
+.mx .alg.is-open .alg-wrap{grid-template-rows:1fr;opacity:1}
+.mx .alg-in{overflow:hidden;min-height:0}
+.mx .alg-in>:first-child{margin-top:16px}
+.mx .alg-t{margin:0;font-family:var(--head);font-style:italic;font-size:18px;color:#F3E6D8}
+.mx .alg-list{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:1fr;gap:2px 18px}
+@media(min-width:520px){.mx .alg-list{grid-template-columns:1fr 1fr}}
+.mx .alg-list li{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px dashed rgba(217,119,6,.18);font-size:15px;color:#EADBCC}
+.mx .alg-list small{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:1px}
+.mx .alg-n{display:grid;place-items:center;flex:none;width:26px;height:26px;border-radius:999px;background:#3B260E;border:1px solid rgba(245,158,11,.5);font-family:var(--mono);font-size:11px;font-weight:600;color:var(--gold)}
+.mx .alg-note{margin:14px 0 0;font-size:14px;line-height:1.5;color:#E5D5C5}
+.mx .alg-foot{margin:16px 0 2px;font-size:12px;line-height:1.5;color:var(--mtx)}
+.mx .alg-foot small{display:block;margin-top:2px;color:var(--dim);font-style:italic}
+@media (prefers-reduced-motion:reduce){.mx .alg-wrap,.mx .alg-chev{transition:none}}
 .mx .others{margin-top:32px}
 .mx .others h2{font-family:var(--head);font-size:20px;font-weight:600;margin:0 0 10px;color:var(--ct)}
 /* footer */
@@ -351,3 +371,5 @@
 .mx .dlg-f .r{display:flex;gap:8px;margin-left:auto}
 .mx .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:60;border-radius:10px;border:1px solid var(--input);background:#1E1915;padding:10px 16px;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.5);color:#FAF5EF}
 .mx .toast.err{border-color:rgba(248,113,113,.6);color:#FCA5A5}
+.mx .alg-pick{display:flex;flex-wrap:wrap;gap:6px}
+.mx .alg-pick .ck{font-size:12px;padding:5px 10px}

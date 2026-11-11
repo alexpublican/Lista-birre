@@ -17,7 +17,12 @@ export interface Voce {
   bottiglia?: number;
   abbinamento?: string;
   nota?: string;
+  /** Note libere sugli allergeni (es. "può contenere tracce di frutta a guscio"). */
   allergeni?: string;
+  /** Allergeni presenti, tra i 14 di legge (chiavi di ALLERGENI). */
+  allergeni_lista?: AllergeneKey[];
+  /** Confermato: non contiene nessuno dei 14 allergeni. */
+  senza_allergeni?: boolean;
   disponibile?: boolean;
   evidenza?: boolean;
   novita?: boolean;
@@ -29,6 +34,28 @@ export interface Voce {
   foto_src?: string;
   foto_err?: number;
 }
+
+// I 14 allergeni del Reg. UE 1169/2011 (Allegato II), nell'ordine e con la numerazione ufficiale.
+export const ALLERGENI = [
+  { k: "glutine", n: 1, it: "Cereali contenenti glutine", en: "Gluten" },
+  { k: "crostacei", n: 2, it: "Crostacei", en: "Crustaceans" },
+  { k: "uova", n: 3, it: "Uova", en: "Eggs" },
+  { k: "pesce", n: 4, it: "Pesce", en: "Fish" },
+  { k: "arachidi", n: 5, it: "Arachidi", en: "Peanuts" },
+  { k: "soia", n: 6, it: "Soia", en: "Soy" },
+  { k: "latte", n: 7, it: "Latte e lattosio", en: "Milk" },
+  { k: "frutta_guscio", n: 8, it: "Frutta a guscio", en: "Tree nuts" },
+  { k: "sedano", n: 9, it: "Sedano", en: "Celery" },
+  { k: "senape", n: 10, it: "Senape", en: "Mustard" },
+  { k: "sesamo", n: 11, it: "Semi di sesamo", en: "Sesame" },
+  { k: "solfiti", n: 12, it: "Anidride solforosa e solfiti", en: "Sulphites" },
+  { k: "lupini", n: 13, it: "Lupini", en: "Lupin" },
+  { k: "molluschi", n: 14, it: "Molluschi", en: "Molluscs" },
+] as const;
+export type AllergeneKey = (typeof ALLERGENI)[number]["k"];
+
+/** Allergeni della voce, sempre in ordine ufficiale (ignora chiavi sconosciute). */
+export const allergeniOf = (v: Voce) => ALLERGENI.filter((a) => v.allergeni_lista?.includes(a.k));
 
 export interface Sezione {
   id: string;

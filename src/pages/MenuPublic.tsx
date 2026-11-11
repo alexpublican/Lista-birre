@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Beer as BeerIcon,
+  ChevronDown,
   ChevronRight,
   Coffee,
   Leaf,
@@ -25,6 +26,7 @@ import PhotoViewer from "@/components/PhotoViewer";
 import {
   SET,
   SETTORI_BERE,
+  allergeniOf,
   dayLabel,
   eur,
   findItem,
@@ -523,6 +525,53 @@ export function MenuSettore() {
   );
 }
 
+// ------------------------------------------------------------------ allergeni (nascosti dietro un pulsante discreto)
+function Allergeni({ v }: { v: Voce }) {
+  const [open, setOpen] = useState(false);
+  const list = allergeniOf(v);
+  const pid = `allerg-${v.id}`;
+  return (
+    <div className={`alg${open ? " is-open" : ""}`}>
+      <button type="button" className="alg-btn" aria-expanded={open} aria-controls={pid} onClick={() => setOpen((o) => !o)}>
+        <span className="alg-dot" aria-hidden>
+          i
+        </span>
+        <span className="alg-lab">Informazioni allergeni</span>
+        <ChevronDown className="i alg-chev" aria-hidden />
+      </button>
+      <div className="alg-wrap" id={pid} role="region" aria-label="Allergeni" inert={!open}>
+        <div className="alg-in">
+          {list.length > 0 ? (
+            <>
+              <p className="alg-t">Questo piatto contiene</p>
+              <ul className="alg-list">
+                {list.map((a) => (
+                  <li key={a.k}>
+                    <span className="alg-n">{a.n}</span>
+                    <span>
+                      {a.it}
+                      <small>{a.en}</small>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : v.senza_allergeni ? (
+            <p className="alg-t">Non contiene nessuno dei 14 allergeni previsti dalla normativa</p>
+          ) : (
+            !v.allergeni && <p className="alg-t">Chiedi pure al nostro personale</p>
+          )}
+          {v.allergeni && <p className="alg-note">{v.allergeni.charAt(0).toUpperCase() + v.allergeni.slice(1)}</p>}
+          <p className="alg-foot">
+            Per allergie o intolleranze rivolgiti al personale: ti indicheremo ingredienti e possibili contaminazioni in cucina.
+            <small>Allergies or intolerances? Please ask our staff.</small>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ------------------------------------------------------------------ scheda articolo
 export function MenuVoce() {
   const { settore, id } = useParams();
@@ -597,11 +646,7 @@ export function MenuVoce() {
             </div>
           )}
           {v.nota && <p className="inote">{v.nota}</p>}
-          {v.allergeni && (
-            <p className="allerg">
-              <b>Allergeni:</b> {v.allergeni}
-            </p>
-          )}
+          {(k === "cibo" || allergeniOf(v).length > 0 || v.senza_allergeni || v.allergeni) && <Allergeni v={v} />}
         </article>
         {others.length > 0 && (
           <section className="others">
