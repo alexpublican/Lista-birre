@@ -35,7 +35,12 @@ import {
   type Voce,
   type VoceArchiviata,
 } from "@/lib/menu";
+import { useAdminT } from "@/lib/i18nAdmin";
+import type { TKey } from "@/lib/i18n";
 import "@/menu.css";
+
+// Nome breve del reparto nella lingua della gestione.
+const secName = (tt: (k: TKey) => string, k: SettoreKey) => tt((k === "cibo" || k === "bar" ? `m_${k}_short` : `m_${k}`) as TKey);
 
 const clone = <T,>(o: T): T => JSON.parse(JSON.stringify(o)) as T;
 const num = (s: string): number | undefined => {
@@ -52,6 +57,7 @@ type Dlg =
   | null;
 
 export default function MenuAdmin() {
+  const { a, t: tt, lang } = useAdminT();
   const me = useQuery({ queryKey: ["me"], queryFn: () => apiGet<AdminMe>("/auth/me"), retry: false });
   const menu = useMenu();
   const qc = useQueryClient();
@@ -70,7 +76,7 @@ export default function MenuAdmin() {
     },
     onError: (_e, _n, ctx) => {
       if (ctx?.prev) qc.setQueryData(MENU_KEY, ctx.prev);
-      toast.error("Salvataggio non riuscito, riprova");
+      toast.error(a("save_err"));
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: MENU_KEY });
@@ -103,26 +109,26 @@ export default function MenuAdmin() {
         <main className={`adm t-${tab}`}>
           <div className="adm-h">
             <div>
-              <h1>Gestione menù</h1>
+              <h1>{a("title")}</h1>
               <div className="brass-rule" style={{ width: 96, marginTop: 12 }} />
               <p className="status">
                 <span className={`dot${save.isPending ? " warn" : menu.isError ? " err" : ""}`} />
-                {save.isPending ? "Salvataggio…" : menu.isError ? "Errore di caricamento" : "Cucina, vini, distillati e caffetteria"}
+                {save.isPending ? a("saving") : menu.isError ? a("load_err") : a("subtitle")}
               </p>
               <TranslateStatus />
             </div>
             <div className="acts">
               <Link className="btn" to="/admin/dashboard">
-                <ArrowLeft className="i" /> Birre
+                <ArrowLeft className="i" /> {tt("m_beers")}
               </Link>
               <Link className="btn" to="/">
-                <Eye className="i" /> Vedi menù
+                <Eye className="i" /> {a("view_menu")}
               </Link>
               <button type="button" className="btn" onClick={() => setDlg({ kind: "sec", k: tab, si: null })} disabled={!m}>
-                <Plus className="i" /> Sezione
+                <Plus className="i" /> {a("section")}
               </button>
               <button type="button" className="btn pri" onClick={() => setDlg({ kind: "item", k: tab, si: null, vi: null })} disabled={!m}>
-                <Plus className="i" /> Aggiungi
+                <Plus className="i" /> {a("add")}
               </button>
             </div>
           </div>
@@ -142,9 +148,10 @@ export default function MenuAdmin() {
                       setQ("");
                     }}
                   >
-                    <b>{x === "cibo" ? "Cibo" : SET[x].short || SET[x].label}</b>
+                    <b>{secName(tt, x)}</b>
                     <span>
-                      {list.length} voci{off ? ` · ${off} esaurite` : ""}
+                      {a("n_items", { n: list.length })}
+                      {off ? ` · ${a("n_out", { n: off })}` : ""}
                     </span>
                   </button>
                 );
@@ -154,7 +161,7 @@ export default function MenuAdmin() {
 
           <div className="asearch">
             <Search className="i" />
-            <input type="search" placeholder="Cerca…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input type="search" placeholder={tt("m_search")} value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
 
           {!m && <div className="mt-3 h-40 animate-pulse rounded-xl border border-[#2E241B] bg-[#181412]" />}
@@ -162,9 +169,9 @@ export default function MenuAdmin() {
           {secs.map((s, si) => {
             const head = s.lavagna ? (
               <div className="asec-h">
-                <span className="t">Lavagna</span>
+                <span className="t">{a("board")}</span>
                 <span className="n">
-                  {s.aggiornata ? (s.aggiornata === today() ? "aggiornata oggi" : "del " + s.aggiornata.split("-").reverse().slice(0, 2).join("/")) : ""}
+                  {s.aggiornata ? (s.aggiornata === today() ? a("updated_today") : a("of_date", { d: s.aggiornata.split("-").reverse().slice(0, 2).join("/") })) : ""}
                 </span>
                 <button
                   type="button"
@@ -174,30 +181,30 @@ export default function MenuAdmin() {
                       setSure(null);
                       commit((n) => {
                         for (let i = (n.settori[tab][si].voci?.length ?? 0) - 1; i >= 0; i--) archivia(n, tab, si, i);
-                      }, "Lavagna svuotata: i piatti sono nello storico");
+                      }, a("board_cleared"));
                     } else setSure("lav");
                   }}
                 >
-                  {sure === "lav" ? "Sicuro?" : "Svuota"}
+                  {sure === "lav" ? a("sure") : a("clear")}
                 </button>
-                <button type="button" className="ib" title="Modifica" onClick={() => setDlg({ kind: "sec", k: tab, si })}>
+                <button type="button" className="ib" title={a("edit")} onClick={() => setDlg({ kind: "sec", k: tab, si })}>
                   <Pencil className="i" />
                 </button>
               </div>
             ) : (
               <div className="asec-h">
                 <span className="t">{s.titolo}</span>
-                <span className="n">{s.voci ? s.voci.length : "testo"}</span>
+                <span className="n">{s.voci ? s.voci.length : a("text")}</span>
                 <button
                   type="button"
                   className="ib"
-                  title="Sposta su"
+                  title={a("move_up")}
                   onClick={() =>
                     si > 0 &&
                     commit((n) => {
                       const l = n.settori[tab];
                       [l[si - 1], l[si]] = [l[si], l[si - 1]];
-                    }, "Ordine aggiornato")
+                    }, a("order_saved"))
                   }
                 >
                   <ChevronUp className="i" />
@@ -205,18 +212,18 @@ export default function MenuAdmin() {
                 <button
                   type="button"
                   className="ib"
-                  title="Sposta giù"
+                  title={a("move_down")}
                   onClick={() =>
                     si < secs.length - 1 &&
                     commit((n) => {
                       const l = n.settori[tab];
                       [l[si + 1], l[si]] = [l[si], l[si + 1]];
-                    }, "Ordine aggiornato")
+                    }, a("order_saved"))
                   }
                 >
                   <ChevronDown className="i" />
                 </button>
-                <button type="button" className="ib" title="Modifica sezione" onClick={() => setDlg({ kind: "sec", k: tab, si })}>
+                <button type="button" className="ib" title={a("edit_section")} onClick={() => setDlg({ kind: "sec", k: tab, si })}>
                   <Pencil className="i" />
                 </button>
               </div>
@@ -239,13 +246,13 @@ export default function MenuAdmin() {
                       <button
                         type="button"
                         className={`switch${v.disponibile !== false ? " on" : ""}`}
-                        title="Disponibile"
-                        aria-label="Disponibile"
+                        title={a("available")}
+                        aria-label={a("available")}
                         onClick={() =>
                           commit((n) => {
                             const x = n.settori[tab][si].voci![vi];
                             x.disponibile = x.disponibile === false;
-                          }, "Disponibilità aggiornata")
+                          }, a("avail_saved"))
                         }
                       />
                       {fotoUrl(v) && (
@@ -269,28 +276,28 @@ export default function MenuAdmin() {
                       <button
                         type="button"
                         className="ib"
-                        title="Su"
+                        title={a("up")}
                         onClick={() =>
                           vi > 0 &&
                           commit((n) => {
                             const l = n.settori[tab][si].voci!;
                             [l[vi - 1], l[vi]] = [l[vi], l[vi - 1]];
-                          }, "Ordine aggiornato")
+                          }, a("order_saved"))
                         }
                       >
                         <ChevronUp className="i" />
                       </button>
-                      <button type="button" className="ib" title="Modifica" onClick={() => setDlg({ kind: "item", k: tab, si, vi })}>
+                      <button type="button" className="ib" title={a("edit")} onClick={() => setDlg({ kind: "item", k: tab, si, vi })}>
                         <Pencil className="i" />
                       </button>
                     </div>
                   ))
                 ) : (
-                  <div className="textbox">{s.lavagna ? "La lavagna è vuota: nel menù non compare. Aggiungi gli speciali di oggi." : "Nessuna voce."}</div>
+                  <div className="textbox">{s.lavagna ? a("board_empty") : a("no_items")}</div>
                 )}
                 <div className="addrow">
                   <button type="button" className="btn sm" onClick={() => setDlg({ kind: "item", k: tab, si, vi: null })}>
-                    <Plus className="i" /> Aggiungi qui
+                    <Plus className="i" /> {a("add_here")}
                   </button>
                 </div>
               </section>
@@ -301,7 +308,7 @@ export default function MenuAdmin() {
 
           <div style={{ marginTop: 28 }}>
             <button type="button" className="btn sm" onClick={() => setDlg({ kind: "notes" })} disabled={!m}>
-              <Pencil className="i" /> Note in fondo al menù
+              <Pencil className="i" /> {a("notes_btn")}
             </button>
           </div>
         </main>
@@ -323,6 +330,7 @@ const dataBreve = (iso?: string) => (iso ? iso.split("-").reverse().join("/") : 
  * nello stesso ordine del menu. Da qui si rimettono nel menu con un tocco o si eliminano per sempre.
  */
 function Storico({ m, k, needle, commit }: { m: MenuData; k: SettoreKey; needle: string; commit: Commit }) {
+  const { a, t: tt, lang } = useAdminT();
   const [open, setOpen] = useState(false);
   const [sure, setSure] = useState<string | null>(null);
   const all = m.archivio?.[k] ?? [];
@@ -335,13 +343,13 @@ function Storico({ m, k, needle, commit }: { m: MenuData; k: SettoreKey; needle:
   for (const s of m.settori[k]) {
     const voci = list.filter((v) => v.sez === s.id);
     voci.forEach((v) => used.add(v));
-    if (voci.length) groups.push({ key: s.id, titolo: s.lavagna ? "Speciali del giorno (lavagna)" : s.titolo, voci });
+    if (voci.length) groups.push({ key: s.id, titolo: s.lavagna ? a("hist_board") : s.titolo, voci });
   }
   for (const v of list) {
     if (used.has(v)) continue;
-    const t = v.sez_titolo || "Altro";
+    const t = v.sez_titolo || a("other");
     let g = groups.find((x) => x.key === "old:" + t);
-    if (!g) groups.push((g = { key: "old:" + t, titolo: `${t} (sezione non più nel menu)`, voci: [] }));
+    if (!g) groups.push((g = { key: "old:" + t, titolo: a("sec_gone", { t }), voci: [] }));
     g.voci.push(v);
   }
 
@@ -350,7 +358,7 @@ function Storico({ m, k, needle, commit }: { m: MenuData; k: SettoreKey; needle:
     setSure(null);
     commit((n) => {
       n.archivio![k] = n.archivio![k].filter((x) => x.id !== v.id);
-    }, `${v.nome} eliminata definitivamente`);
+    }, a("deleted_forever", { name: v.nome }));
     if (v.foto) apiDelete(`/menu/photo/${encodeURIComponent(v.id)}`).catch(() => {});
   };
 
@@ -364,7 +372,7 @@ function Storico({ m, k, needle, commit }: { m: MenuData; k: SettoreKey; needle:
       >
         <History className="i" style={{ color: "#F59E0B", width: 20, height: 20 }} />
         <span style={{ fontFamily: "var(--head)", fontSize: 20, fontWeight: 600, color: "#FAF5EF" }}>
-          Storico · {k === "cibo" ? "Cucina" : SET[k].short || SET[k].label}
+          {a("hist")} · {secName(tt, k)}
         </span>
         <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--dim)" }}>{all.length}</span>
         <ChevronDown className="i" style={{ color: "var(--dim)", transform: show ? "rotate(180deg)" : undefined, transition: "transform .15s" }} />
@@ -372,11 +380,11 @@ function Storico({ m, k, needle, commit }: { m: MenuData; k: SettoreKey; needle:
       {show && (
         <>
           <p style={{ margin: "4px 2px 0", fontSize: 13, color: "var(--mtx)" }}>
-            Voci tolte dal menu, con foto, prezzo, allergeni e descrizione. «Rimetti» le riporta nella loro sezione.
+            {a("hist_hint")}
           </p>
           {!list.length ? (
             <div className="textbox" style={{ marginTop: 12, border: "1px dashed var(--border)", borderRadius: 12 }}>
-              {needle ? "Nessuna voce dello storico corrisponde alla ricerca." : "Ancora niente nello storico. Quando togli una voce dal menu (Modifica → «Togli dal menu») finisce qui."}
+              {needle ? a("hist_nomatch") : a("hist_empty")}
             </div>
           ) : (
             groups.map((g) => (
@@ -402,7 +410,7 @@ function Storico({ m, k, needle, commit }: { m: MenuData; k: SettoreKey; needle:
                           hasSizes(v)
                             ? [v.calice != null ? eur(v.calice) : "", v.bottiglia != null ? eur(v.bottiglia) : ""].filter(Boolean).join(" / ")
                             : eur(v.prezzo),
-                          v.archiviata_il && `tolta il ${dataBreve(v.archiviata_il)}`,
+                          v.archiviata_il && a("removed_on", { d: dataBreve(v.archiviata_il) }),
                         ]
                           .filter(Boolean)
                           .join(" · ")}
@@ -411,25 +419,25 @@ function Storico({ m, k, needle, commit }: { m: MenuData; k: SettoreKey; needle:
                     <button
                       type="button"
                       className="btn sm"
-                      title="Rimetti nel menu"
+                      title={a("restore_title")}
                       onClick={() => {
                         const s = m.settori[k].find((x) => x.id === v.sez && x.voci);
-                        const dove = s ? (s.lavagna ? "Lavagna" : s.titolo) : v.sez_titolo || "Altro";
+                        const dove = s ? (s.lavagna ? a("board") : s.titolo) : v.sez_titolo || a("other");
                         commit((n) => {
                           ripristina(n, k, v.id);
-                        }, `${v.nome} è tornata nel menu, in «${dove}»`);
+                        }, a("restored", { name: v.nome, where: dove }));
                       }}
                     >
-                      <RotateCcw className="i" /> Rimetti
+                      <RotateCcw className="i" /> {a("restore")}
                     </button>
                     <button
                       type="button"
                       className={sure === v.id ? "btn sm danger" : "ib del"}
-                      title="Elimina per sempre"
-                      aria-label="Elimina per sempre"
+                      title={a("delete_forever")}
+                      aria-label={a("delete_forever")}
                       onClick={() => elimina(v)}
                     >
-                      {sure === v.id ? "Sicuro?" : <Trash2 className="i" />}
+                      {sure === v.id ? a("sure") : <Trash2 className="i" />}
                     </button>
                   </div>
                 ))}
@@ -461,10 +469,11 @@ function Check({ label, on, set }: { label: string; on: boolean; set: (v: boolea
 
 // ------------------------------------------------------------------ traduzioni automatiche
 const TR_KEY = ["menu-tr"] as const;
-const LANG_NAME: Record<TrLang, string> = { en: "Inglese", de: "Tedesco", fr: "Francese", es: "Spagnolo" };
+const LANG_NAME: Record<TrLang, string> = { en: "English", de: "Deutsch", fr: "Français", es: "Español" };
 
 /** Quanti testi aspettano la traduzione + pulsante "Traduci adesso". */
 function TranslateStatus() {
+  const { a, t: tt, lang } = useAdminT();
   const qc = useQueryClient();
   const st = useQuery({
     queryKey: TR_KEY,
@@ -481,23 +490,17 @@ function TranslateStatus() {
         const r = await apiPost<{ translated: number; remaining: number; error?: string }>("/menu/translate");
         qc.setQueryData(TR_KEY, { remaining: r.remaining });
         if (r.error) {
-          toast.error(
-            /429|quota|RESOURCE_EXHAUSTED/i.test(r.error)
-              ? "Gemini chiede una pausa: riprova tra un minuto (o lascia fare al controllo orario)"
-              : r.error.includes("chiave")
-                ? r.error
-                : "Traduzione non riuscita adesso: ci riprova da solo ogni ora",
-          );
+          toast.error(/429|quota|RESOURCE_EXHAUSTED/i.test(r.error) ? a("tr_pause") : r.error.includes("chiave") ? r.error : a("tr_later"));
           break;
         }
         if (r.remaining === 0) {
-          toast.success("Menù tradotto in inglese, tedesco, francese e spagnolo");
+          toast.success(a("tr_done"));
           break;
         }
         if (r.translated === 0) break;
       }
     } catch {
-      toast.error("Traduzione non riuscita, riprova");
+      toast.error(a("tr_err"));
     } finally {
       setBusy(false);
       qc.invalidateQueries({ queryKey: MENU_KEY });
@@ -508,10 +511,10 @@ function TranslateStatus() {
   return (
     <p className="status">
       <Languages className="i" />
-      {busy ? "Traduco…" : left === 0 ? "Traduzioni EN · DE · FR · ES complete" : `${left} ${left === 1 ? "testo" : "testi"} da tradurre`}
+      {busy ? a("tr_busy") : left === 0 ? a("tr_complete") : left === 1 ? a("tr_left1") : a("tr_left", { n: left })}
       {left > 0 && (
         <button type="button" className="btn sm" onClick={run} disabled={busy}>
-          Traduci adesso
+          {a("tr_now")}
         </button>
       )}
     </p>
@@ -519,11 +522,11 @@ function TranslateStatus() {
 }
 
 const TR_FIELDS = [
-  { f: "nome", label: "Nome", long: false },
-  { f: "descrizione", label: "Descrizione", long: true },
-  { f: "abbinamento", label: "Abbinamento", long: false },
-  { f: "nota", label: "Nota", long: false },
-  { f: "allergeni", label: "Note allergeni", long: false },
+  { f: "nome", label: "f_name", long: false },
+  { f: "descrizione", label: "f_desc", long: true },
+  { f: "abbinamento", label: "f_pairing", long: false },
+  { f: "nota", label: "f_note", long: false },
+  { f: "allergeni", label: "f_allerg_note", long: false },
 ] as const;
 type TrField = (typeof TR_FIELDS)[number]["f"];
 type TrForm = Record<TrLang, Record<TrField, string>>;
@@ -539,6 +542,7 @@ function trForm(v: Voce): TrForm {
 
 function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreKey; si: number | null; vi: number | null }; close: () => void; commit: Commit }) {
   const { k, vi } = dlg;
+  const { a, t: tt, lang } = useAdminT();
   const secOpts = m.settori[k].map((s, i) => ({ s, i })).filter((x) => x.s.voci);
   const si0 = dlg.si != null && m.settori[k][dlg.si]?.voci ? dlg.si : (secOpts[0]?.i ?? 0);
   const isNew = vi == null;
@@ -590,7 +594,7 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
         nv.foto = r.foto;
       } catch (err) {
         const d = err instanceof ApiError ? (err.body as { detail?: unknown } | null)?.detail : null;
-        toast.error(typeof d === "string" ? d : "Non sono riuscito a caricare l'immagine");
+        toast.error(typeof d === "string" ? d : a("img_err"));
         setBusy(false);
         return;
       }
@@ -605,7 +609,7 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
       delete nv.foto_err;
     } else if (l !== v.foto_src) {
       if (!/^https:\/\//i.test(l)) {
-        toast.error("Il link dell'immagine deve iniziare con https://");
+        toast.error(a("img_https"));
         return;
       }
       nv.foto_src = l;
@@ -658,39 +662,39 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
       if (!isNew) n.settori[k][si0].voci!.splice(vi!, 1);
       if (!isNew && to === si0) n.settori[k][to].voci!.splice(vi!, 0, nv);
       else n.settori[k][to].voci!.push(nv);
-    }, isNew ? "Voce aggiunta" : "Modifiche salvate");
+    }, isNew ? a("item_added") : a("changes_saved"));
     close();
   };
 
   return (
     <Overlay close={close}>
       <form className={`dlg t-${k}`} onSubmit={submit}>
-        <h2>{isNew ? "Nuova voce" : "Modifica voce"}</h2>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--mtx)" }}>{SET[k].short || SET[k].label}</p>
+        <h2>{isNew ? a("new_item") : a("edit_item")}</h2>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--mtx)" }}>{secName(tt, k)}</p>
         <div className="fgrid">
           <div className="fld">
-            <label>Nome *</label>
+            <label>{a("name_req")}</label>
             <input required value={f.nome} onChange={(e) => set("nome", e.target.value)} autoFocus={isNew} />
           </div>
           <div className="fld">
-            <label>Sezione</label>
+            <label>{a("section")}</label>
             <select value={f.sez} onChange={(e) => set("sez", Number(e.target.value))}>
               {secOpts.map((x) => (
                 <option key={x.s.id} value={x.i}>
-                  {x.s.lavagna ? "Lavagna · Speciali del giorno" : x.s.titolo}
+                  {x.s.lavagna ? a("board_specials") : x.s.titolo}
                 </option>
               ))}
             </select>
           </div>
           {(k !== "cibo" || f.cantina) && (
             <div className="fld">
-              <label>{k === "vini" ? "Cantina / produttore" : "Marca / produttore"}</label>
+              <label>{k === "vini" ? a("winery") : a("brand")}</label>
               <input value={f.cantina} onChange={(e) => set("cantina", e.target.value)} />
             </div>
           )}
           {k !== "cibo" && (
             <div className="fld">
-              <label>Logo / foto</label>
+              <label>{a("logo")}</label>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div
                   style={{
@@ -712,7 +716,7 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
                   )}
                 </div>
                 <button type="button" className="btn sm" onClick={() => fileInput.current?.click()}>
-                  <ImagePlus className="i" /> {preview ? "Cambia" : "Scegli"}
+                  <ImagePlus className="i" /> {preview ? a("change") : a("choose")}
                 </button>
                 {preview && (
                   <button
@@ -724,7 +728,7 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
                       setPreview(null);
                     }}
                   >
-                    <X className="i" /> Togli
+                    <X className="i" /> {a("remove")}
                   </button>
                 )}
                 <input
@@ -745,43 +749,43 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
               <input
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
-                placeholder="oppure incolla il link di un'immagine (https://…)"
+                placeholder={a("img_link_ph")}
                 inputMode="url"
                 style={{ marginTop: 8 }}
               />
               {v.foto_src && (v.foto_err ?? 0) >= 3 ? (
-                <small style={{ color: "#FDBA74" }}>Non sono riuscito a scaricare questo link: prova con un altro o carica il file.</small>
+                <small style={{ color: "#FDBA74" }}>{a("img_link_fail")}</small>
               ) : v.foto_src ? (
-                <small style={{ color: "var(--mtx)" }}>Immagine in arrivo: il sito la scarica da solo entro pochi minuti.</small>
+                <small style={{ color: "var(--mtx)" }}>{a("img_link_wait")}</small>
               ) : null}
             </div>
           )}
           <div className="fld">
-            <label>Descrizione / ingredienti</label>
+            <label>{a("desc_ingr")}</label>
             <textarea value={f.descrizione} onChange={(e) => set("descrizione", e.target.value)} />
           </div>
           <div className="fld">
-            <label>Tipo di prezzo</label>
+            <label>{a("price_type")}</label>
             <select value={f.wine ? "2" : "1"} onChange={(e) => set("wine", e.target.value === "2")}>
-              <option value="1">Prezzo unico</option>
-              <option value="2">Calice e bottiglia</option>
+              <option value="1">{a("single_price")}</option>
+              <option value="2">{a("glass_bottle")}</option>
             </select>
           </div>
           {f.wine ? (
             <div className="f2">
               <div className="fld">
-                <label>Calice €</label>
+                <label>{a("glass_eur")}</label>
                 <input inputMode="decimal" value={f.calice} onChange={(e) => set("calice", e.target.value)} />
               </div>
               <div className="fld">
-                <label>Bottiglia €</label>
+                <label>{a("bottle_eur")}</label>
                 <input inputMode="decimal" value={f.bottiglia} onChange={(e) => set("bottiglia", e.target.value)} />
               </div>
             </div>
           ) : (
             <div className="f2">
               <div className="fld">
-                <label>Prezzo €</label>
+                <label>{a("price_eur")}</label>
                 <input inputMode="decimal" value={f.prezzo} onChange={(e) => set("prezzo", e.target.value)} />
               </div>
               <div />
@@ -789,28 +793,28 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
           )}
           {(k === "cibo" || f.abbinamento) && (
             <div className="fld">
-              <label>Birra in abbinamento</label>
-              <input value={f.abbinamento} onChange={(e) => set("abbinamento", e.target.value)} placeholder="es. una Pils o una IPA" />
+              <label>{a("beer_pairing")}</label>
+              <input value={f.abbinamento} onChange={(e) => set("abbinamento", e.target.value)} placeholder={a("beer_pairing_ph")} />
             </div>
           )}
           <div className="fld">
-            <label>Nota</label>
-            <input value={f.nota} onChange={(e) => set("nota", e.target.value)} placeholder="es. Non si effettuano aggiunte" />
+            <label>{a("note")}</label>
+            <input value={f.nota} onChange={(e) => set("nota", e.target.value)} placeholder={a("note_ph")} />
           </div>
           {(k === "cibo" || f.allergeniLista.length > 0 || f.senzaAllergeni || f.allergeni) && (
             <div className="fld">
-              <label>Allergeni (i clienti li vedono toccando "Allergeni" in fondo alla scheda)</label>
+              <label>{a("allerg_label")}</label>
               <div className="alg-pick">
-                {ALLERGENI.map((a) => (
+                {ALLERGENI.map((al) => (
                   <Check
-                    key={a.k}
-                    label={`${a.n} · ${a.it}`}
-                    on={f.allergeniLista.includes(a.k)}
+                    key={al.k}
+                    label={`${al.n} · ${lang === "it" ? al.it : al[lang]}`}
+                    on={f.allergeniLista.includes(al.k)}
                     set={(x) =>
                       setF((o) => ({
                         ...o,
                         senzaAllergeni: x ? false : o.senzaAllergeni,
-                        allergeniLista: x ? [...o.allergeniLista, a.k] : o.allergeniLista.filter((y) => y !== a.k),
+                        allergeniLista: x ? [...o.allergeniLista, al.k] : o.allergeniLista.filter((y) => y !== al.k),
                       }))
                     }
                   />
@@ -818,7 +822,7 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
               </div>
               <div className="checks" style={{ marginTop: 8 }}>
                 <Check
-                  label="Nessuno dei 14 allergeni"
+                  label={a("no_allerg")}
                   on={f.senzaAllergeni && !f.allergeniLista.length}
                   set={(x) => setF((o) => ({ ...o, senzaAllergeni: x, allergeniLista: x ? [] : o.allergeniLista }))}
                 />
@@ -827,18 +831,17 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
                 style={{ marginTop: 8 }}
                 value={f.allergeni}
                 onChange={(e) => set("allergeni", e.target.value)}
-                placeholder="Note (facoltative), es. può contenere tracce di frutta a guscio"
+                placeholder={a("allerg_note_ph")}
               />
-              <p className="hint">Se non segni nulla, il cliente legge "Chiedi pure al nostro personale".</p>
+              <p className="hint">{a("allerg_hint")}</p>
             </div>
           )}
           <details className="trbox">
             <summary>
-              <Languages className="i" /> Traduzioni (EN · DE · FR · ES)
+              <Languages className="i" /> {a("tr_box")}
             </summary>
             <p className="hint">
-              Le fa il sito in automatico dopo il salvataggio. Qui puoi correggerle: una traduzione corretta a mano resta finché non cambi il testo
-              italiano. Lascia vuoto per farla rifare.
+              {a("tr_hint")}
             </p>
             <div className="checks" style={{ margin: "8px 0" }}>
               {TR_LANGS.map((l) => (
@@ -850,18 +853,18 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
             {TR_FIELDS.filter(({ f: field }) => (f[field] ?? "").trim()).map(({ f: field, label, long }) => (
               <div className="fld" key={field} style={{ marginTop: 8 }}>
                 <label>
-                  {label} <span style={{ color: "var(--dim)" }}>· {(f[field] as string).trim().slice(0, 60)}</span>
+                  {a(label)} <span style={{ color: "var(--dim)" }}>· {(f[field] as string).trim().slice(0, 60)}</span>
                 </label>
                 {long ? (
                   <textarea
                     value={tr[trLang][field]}
-                    placeholder="Verrà tradotta in automatico"
+                    placeholder={a("tr_auto")}
                     onChange={(e) => setTr((o) => ({ ...o, [trLang]: { ...o[trLang], [field]: e.target.value } }))}
                   />
                 ) : (
                   <input
                     value={tr[trLang][field]}
-                    placeholder={field === "nome" ? "Uguale all'italiano se è un nome proprio" : "Verrà tradotta in automatico"}
+                    placeholder={field === "nome" ? a("tr_name_ph") : a("tr_auto")}
                     onChange={(e) => setTr((o) => ({ ...o, [trLang]: { ...o[trLang], [field]: e.target.value } }))}
                   />
                 )}
@@ -869,11 +872,11 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
             ))}
           </details>
           <div className="checks">
-            <Check label="Disponibile" on={f.disponibile} set={(x) => set("disponibile", x)} />
-            <Check label="In evidenza" on={f.evidenza} set={(x) => set("evidenza", x)} />
-            <Check label="Novità" on={f.novita} set={(x) => set("novita", x)} />
-            {k === "cibo" && <Check label="Vegetariano" on={f.vegano} set={(x) => set("vegano", x)} />}
-            {k === "cibo" && <Check label="Piccante" on={f.piccante} set={(x) => set("piccante", x)} />}
+            <Check label={a("available")} on={f.disponibile} set={(x) => set("disponibile", x)} />
+            <Check label={tt("m_featured")} on={f.evidenza} set={(x) => set("evidenza", x)} />
+            <Check label={tt("m_new")} on={f.novita} set={(x) => set("novita", x)} />
+            {k === "cibo" && <Check label={tt("m_veg")} on={f.vegano} set={(x) => set("vegano", x)} />}
+            {k === "cibo" && <Check label={tt("m_hot")} on={f.piccante} set={(x) => set("piccante", x)} />}
           </div>
         </div>
         <div className="dlg-f">
@@ -881,21 +884,21 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
             <button
               type="button"
               className="btn"
-              title="La voce sparisce dal menu ma resta nello storico, da dove puoi rimetterla"
+              title={a("archive_title")}
               onClick={() => {
-                commit((n) => archivia(n, k, si0, vi!), `${v.nome} spostata nello storico`);
+                commit((n) => archivia(n, k, si0, vi!), a("archived", { name: v.nome }));
                 close();
               }}
             >
-              <Archive className="i" /> Togli dal menu
+              <Archive className="i" /> {a("archive")}
             </button>
           )}
           <div className="r">
             <button type="button" className="btn" onClick={close}>
-              Annulla
+              {a("cancel")}
             </button>
             <button type="submit" className="btn pri" disabled={busy}>
-              {busy ? "Carico l'immagine…" : "Salva"}
+              {busy ? a("uploading") : a("save")}
             </button>
           </div>
         </div>
@@ -906,6 +909,7 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
 
 function SecDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreKey; si: number | null }; close: () => void; commit: Commit }) {
   const { k, si } = dlg;
+  const { a, t: tt, lang } = useAdminT();
   const isNew = si == null;
   const s: Sezione = isNew ? { id: "", titolo: "", voci: [] } : m.settori[k][si];
   const isText = !isNew && !s.voci;
@@ -932,37 +936,37 @@ function SecDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreKe
         else if (nota.trim()) ns.nota = nota.trim();
         else delete ns.nota;
       }
-    }, "Sezione salvata");
+    }, a("sec_saved"));
     close();
   };
 
   return (
     <Overlay close={close}>
       <form className={`dlg t-${k}`} onSubmit={submit}>
-        <h2>{isNew ? "Nuova sezione" : "Modifica sezione"}</h2>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--mtx)" }}>{SET[k].short || SET[k].label}</p>
+        <h2>{isNew ? a("new_sec") : a("edit_section")}</h2>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--mtx)" }}>{secName(tt, k)}</p>
         <div className="fgrid">
           <div className="fld">
-            <label>Titolo *</label>
+            <label>{a("title_req")}</label>
             <input required value={titolo} onChange={(e) => setTitolo(e.target.value)} />
           </div>
           {isText ? (
             <div className="fld">
-              <label>Testo</label>
+              <label>{a("sec_text")}</label>
               <textarea style={{ minHeight: 140 }} value={testo} onChange={(e) => setTesto(e.target.value)} />
             </div>
           ) : (
             <div className="fld">
-              <label>{s.lavagna ? "Frase sotto il titolo della lavagna" : "Nota sotto la sezione"}</label>
+              <label>{s.lavagna ? a("board_line") : a("sec_note")}</label>
               <input value={nota} onChange={(e) => setNota(e.target.value)} />
             </div>
           )}
           {isNew && (
             <div className="fld">
-              <label>Tipo</label>
+              <label>{a("type")}</label>
               <select value={tipo} onChange={(e) => setTipo(e.target.value as "voci" | "testo")}>
-                <option value="voci">Elenco di voci</option>
-                <option value="testo">Riquadro di testo</option>
+                <option value="voci">{a("type_list")}</option>
+                <option value="testo">{a("type_text")}</option>
               </select>
             </div>
           )}
@@ -977,19 +981,19 @@ function SecDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreKe
                 commit((n) => {
                   for (let i = (n.settori[k][si].voci?.length ?? 0) - 1; i >= 0; i--) archivia(n, k, si, i);
                   n.settori[k].splice(si, 1);
-                }, s.voci?.length ? "Sezione eliminata: le voci sono nello storico" : "Sezione eliminata");
+                }, s.voci?.length ? a("sec_deleted_items") : a("sec_deleted"));
                 close();
               }}
             >
-              <Trash2 className="i" /> {sureDel ? (s.voci?.length ? `Confermi? Le ${s.voci.length} voci vanno nello storico` : "Conferma") : "Elimina sezione"}
+              <Trash2 className="i" /> {sureDel ? (s.voci?.length ? a("confirm_items", { n: s.voci.length }) : a("confirm")) : a("delete_sec")}
             </button>
           )}
           <div className="r">
             <button type="button" className="btn" onClick={close}>
-              Annulla
+              {a("cancel")}
             </button>
             <button type="submit" className="btn pri">
-              Salva
+              {a("save")}
             </button>
           </div>
         </div>
@@ -999,6 +1003,7 @@ function SecDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreKe
 }
 
 function NotesDialog({ m, close, commit }: { m: MenuData; close: () => void; commit: Commit }) {
+  const { a } = useAdminT();
   const [t, setT] = useState((m.note_finali ?? []).join("\n"));
   return (
     <Overlay close={close}>
@@ -1011,12 +1016,12 @@ function NotesDialog({ m, close, commit }: { m: MenuData; close: () => void; com
               .split("\n")
               .map((x) => x.trim())
               .filter(Boolean);
-          }, "Note salvate");
+          }, a("notes_saved"));
           close();
         }}
       >
-        <h2>Note in fondo al menù</h2>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--mtx)" }}>Una nota per riga</p>
+        <h2>{a("notes_btn")}</h2>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--mtx)" }}>{a("one_per_line")}</p>
         <div className="fgrid">
           <div className="fld">
             <textarea style={{ minHeight: 200 }} value={t} onChange={(e) => setT(e.target.value)} />
@@ -1025,10 +1030,10 @@ function NotesDialog({ m, close, commit }: { m: MenuData; close: () => void; com
         <div className="dlg-f">
           <div className="r">
             <button type="button" className="btn" onClick={close}>
-              Annulla
+              {a("cancel")}
             </button>
             <button type="submit" className="btn pri">
-              Salva
+              {a("save")}
             </button>
           </div>
         </div>

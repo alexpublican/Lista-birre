@@ -334,8 +334,8 @@ function Row({ k, v, i, group }: { k: SettoreKey; v: Voce; i: number; group: str
         <span className="sw" />
       )}
       <span className="mid">
-        <span className="nm">{v.nome}</span>
-        {nome !== v.nome && <span className="nm-tr">{nome}</span>}
+        <span className="nm">{nome}</span>
+        {nome !== v.nome && <span className="nm-tr">{v.nome}</span>}
         {sub && <span className="sub">{sub}</span>}
         <span className="tags">
           <Tags v={v} icons />
@@ -383,8 +383,8 @@ function Lavagna({ m }: { m: MenuData }) {
         {vs.map((v) => (
           <Link key={v.id} className="sp" to={`/menu/cibo/${encodeURIComponent(v.id)}`} state={{ group: l.id }}>
             <span style={{ minWidth: 0 }}>
-              <span className="sn">{v.nome}</span>
-              {trText(v, "nome", lang) !== v.nome && <span className="sd">{trText(v, "nome", lang)}</span>}
+              <span className="sn">{trText(v, "nome", lang)}</span>
+              {trText(v, "nome", lang) !== v.nome && <span className="sd">{v.nome}</span>}
               {v.descrizione && <span className="sd">{trText(v, "descrizione", lang)}</span>}
               <span className="sx">{t("m_details")} ›</span>
             </span>
@@ -670,16 +670,16 @@ export function MenuVoce() {
           )}
           {fotoUrl(v) && (
             <div className="logo-big">
-              <PhotoViewer src={fotoUrl(v)!} alt={v.cantina || v.nome} light className="logo-zoom">
-                <img src={fotoUrl(v)!} alt={v.cantina || v.nome} decoding="async" />
+              <PhotoViewer src={fotoUrl(v)!} alt={v.cantina || nome} light className="logo-zoom">
+                <img src={fotoUrl(v)!} alt={v.cantina || nome} decoding="async" />
               </PhotoViewer>
             </div>
           )}
           {v.cantina && <p className="cant">{v.cantina}</p>}
           <div className="top">
             <h1>
-              {v.nome}
-              {nome !== v.nome && <small className="nm-tr">{nome}</small>}
+              {nome}
+              {nome !== v.nome && <small className="nm-tr">{v.nome}</small>}
             </h1>
             {!hasSizes(v) && <Price v={v} />}
           </div>

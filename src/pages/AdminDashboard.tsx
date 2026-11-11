@@ -370,7 +370,7 @@ export default function AdminDashboard() {
               </PopoverContent>
             </Popover>
             <Link to="/admin/menu" className={buttonVariants({ variant: "outline" })} data-testid="food-menu-link">
-              <UtensilsCrossed className="size-4" /> <span className="hidden sm:inline">Cucina e bar</span>
+              <UtensilsCrossed className="size-4" /> <span className="hidden sm:inline">{t("kitchen_bar")}</span>
             </Link>
             <Link to="/" className={buttonVariants({ variant: "outline" })} data-testid="view-menu-link">
               <Eye className="size-4" /> <span className="hidden sm:inline">{t("back_menu")}</span>

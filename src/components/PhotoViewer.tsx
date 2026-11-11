@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent, type React
 import { Dialog } from "@base-ui/react/dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Rende "toccabile" una foto: al tocco si apre a schermo intero su fondo scuro.
@@ -22,6 +23,7 @@ export default function PhotoViewer({
   className?: string;
   light?: boolean; // foto di bottiglie e loghi: sfondo chiaro, come nella scheda
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const pushed = useRef(false);
 
@@ -53,7 +55,7 @@ export default function PhotoViewer({
         type="button"
         onClick={() => setOpen(true)}
         className={cn("block cursor-zoom-in", className)}
-        aria-label={`Apri foto: ${alt}`}
+        aria-label={`${t("photo_open")}: ${alt}`}
         data-testid="photo-open"
       >
         {children}
@@ -70,7 +72,7 @@ export default function PhotoViewer({
             <button
               type="button"
               onClick={close}
-              aria-label="Chiudi foto"
+              aria-label={t("photo_close")}
               className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 grid size-11 place-items-center rounded-full border border-white/20 bg-black/60 text-white backdrop-blur-md active:scale-95"
               data-testid="photo-close"
             >

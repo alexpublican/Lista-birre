@@ -291,6 +291,9 @@ const DICT = {
   m_no_allergens: { it: "Non contiene nessuno dei 14 allergeni previsti dalla normativa", en: "Contains none of the 14 allergens listed by EU law", de: "Enthält keines der 14 gesetzlich vorgeschriebenen Allergene", fr: "Ne contient aucun des 14 allergènes réglementaires", es: "No contiene ninguno de los 14 alérgenos previstos por la normativa" },
   m_ask_staff: { it: "Chiedi pure al nostro personale", en: "Please ask our staff", de: "Frag gerne unser Personal", fr: "N'hésitez pas à demander au personnel", es: "Pregunta a nuestro personal" },
   m_allergy_foot: { it: "Per allergie o intolleranze rivolgiti al personale: ti indicheremo ingredienti e possibili contaminazioni in cucina.", en: "Allergies or intolerances? Please ask our staff: we'll tell you the ingredients and any possible cross-contamination in the kitchen.", de: "Allergien oder Unverträglichkeiten? Frag unser Personal: Wir nennen dir Zutaten und mögliche Kreuzkontaminationen in der Küche.", fr: "Allergies ou intolérances ? Adressez-vous au personnel : nous vous indiquerons les ingrédients et les contaminations croisées possibles en cuisine.", es: "¿Alergias o intolerancias? Pregunta al personal: te indicaremos los ingredientes y las posibles contaminaciones cruzadas en cocina." },
+  kitchen_bar: { it: "Cucina e bar", en: "Kitchen & bar", de: "Küche & Bar", fr: "Cuisine & bar", es: "Cocina y bar" },
+  photo_open: { it: "Apri foto", en: "Open photo", de: "Foto öffnen", fr: "Ouvrir la photo", es: "Abrir foto" },
+  photo_close: { it: "Chiudi foto", en: "Close photo", de: "Foto schließen", fr: "Fermer la photo", es: "Cerrar foto" },
 } satisfies Record<string, Record<Lang, string>>;
 
 export type TKey = keyof typeof DICT;
