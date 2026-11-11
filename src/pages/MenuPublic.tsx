@@ -21,6 +21,7 @@ import {
 import HistoricHeader from "@/components/HistoricHeader";
 import BrandMark from "@/components/BrandMark";
 import VenueInfo from "@/components/VenueInfo";
+import PhotoViewer from "@/components/PhotoViewer";
 import {
   SET,
   SETTORI_BERE,
@@ -555,7 +556,9 @@ export function MenuVoce() {
           )}
           {fotoUrl(v) && (
             <div className="logo-big">
-              <img src={fotoUrl(v)!} alt={v.cantina || v.nome} decoding="async" />
+              <PhotoViewer src={fotoUrl(v)!} alt={v.cantina || v.nome} light className="logo-zoom">
+                <img src={fotoUrl(v)!} alt={v.cantina || v.nome} decoding="async" />
+              </PhotoViewer>
             </div>
           )}
           {v.cantina && <p className="cant">{v.cantina}</p>}

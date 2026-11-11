@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import RatingStars from "@/components/RatingStars";
 import NotifyMe from "@/components/NotifyMe";
+import PhotoViewer from "@/components/PhotoViewer";
 
 export default function BeerCard({
   beer,
@@ -75,18 +76,20 @@ export default function BeerCard({
       <div className="flex items-start justify-between gap-4">
         {photo ? (
           <div className="relative shrink-0">
-            <img
-              src={photo}
-              alt={beer.nome}
-              loading="lazy"
-              className={cn(
-                "rounded-md border border-[#3D3126]",
-                isBottlePhoto(beer)
-                  ? "h-24 w-[4.5rem] bg-white object-contain p-1 sm:h-28 sm:w-20"
-                  : "size-20 object-cover sm:size-24",
-              )}
-              data-testid="beer-card-photo"
-            />
+            <PhotoViewer src={photo} alt={beer.nome} light={isBottlePhoto(beer)}>
+              <img
+                src={photo}
+                alt={beer.nome}
+                loading="lazy"
+                className={cn(
+                  "rounded-md border border-[#3D3126]",
+                  isBottlePhoto(beer)
+                    ? "h-24 w-[4.5rem] bg-white object-contain p-1 sm:h-28 sm:w-20"
+                    : "size-20 object-cover sm:size-24",
+                )}
+                data-testid="beer-card-photo"
+              />
+            </PhotoViewer>
             {tapMark && <div className="absolute -right-2.5 -bottom-2.5 origin-bottom-right scale-90">{tapMark}</div>}
           </div>
         ) : (
