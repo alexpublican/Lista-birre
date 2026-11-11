@@ -23,6 +23,11 @@ export interface Voce {
   novita?: boolean;
   vegano?: boolean;
   piccante?: boolean;
+  /** Versione del logo/foto caricato (file "menu/<id>" nello storage); assente = nessuna immagine. */
+  foto?: string;
+  /** Link di un'immagine da scaricare: ci pensa il server (subito dopo il salvataggio e ogni ora). */
+  foto_src?: string;
+  foto_err?: number;
 }
 
 export interface Sezione {
@@ -116,5 +121,7 @@ export function uniqueId(m: MenuData, name: string): string {
   while (used.has(id)) id = `${base}-${i++}`;
   return id;
 }
+
+export const fotoUrl = (v: Voce) => (v.foto ? `/api/menu/photo/${encodeURIComponent(v.id)}?v=${encodeURIComponent(v.foto)}` : null);
 
 export const hasSizes = (v: Voce) => v.calice != null || v.bottiglia != null;

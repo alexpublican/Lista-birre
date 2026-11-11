@@ -1,18 +1,20 @@
 // Area gestione del menù cucina / vini / distillati / caffetteria (/admin/menu).
 // Si entra con lo stesso PIN delle birre. Ogni modifica salva l'intero menù (PUT /api/menu).
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronDown, ChevronUp, Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Eye, ImagePlus, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import HistoricHeader from "@/components/HistoricHeader";
-import { apiGet, apiPut } from "@/lib/api";
+import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
+import { resizeImage } from "@/lib/images";
 import type { AdminMe } from "@/lib/beers";
 import {
   MENU_KEY,
   SET,
   SETTORI,
   eur,
+  fotoUrl,
   hasSizes,
   norm,
   today,
@@ -231,6 +233,14 @@ export default function MenuAdmin() {
                           }, "Disponibilità aggiornata")
                         }
                       />
+                      {fotoUrl(v) && (
+                        <img
+                          src={fotoUrl(v)!}
+                          alt=""
+                          loading="lazy"
+                          style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 6, background: "#F6F0E8", padding: 3, flex: "none" }}
+                        />
+                      )}
                       <div className="an">
                         <b>
                           {v.nome}
@@ -331,13 +341,50 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
     piccante: !!v.piccante,
   });
   const [sureDel, setSureDel] = useState(false);
+  const [busy, setBusy] = useState(false);
+  // Logo / foto: file scelto ora (da caricare al salvataggio) oppure "togli" quello esistente.
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoGone, setPhotoGone] = useState(false);
+  const [preview, setPreview] = useState<string | null>(fotoUrl(v));
+  const [link, setLink] = useState(v.foto_src ?? "");
+  const fileInput = useRef<HTMLInputElement>(null);
   const set = <K extends keyof typeof f>(key: K, val: (typeof f)[K]) => setF((o) => ({ ...o, [key]: val }));
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     const nome = f.nome.trim();
-    if (!nome) return;
+    if (!nome || busy) return;
     const nv: Voce = isNew ? { id: uniqueId(m, nome), nome } : { ...clone(v), nome };
+    if (photoFile) {
+      setBusy(true);
+      try {
+        const fd = new FormData();
+        fd.append("file", await resizeImage(photoFile, 600, "image/webp"), "logo.webp");
+        const r = await apiPost<{ foto: string }>(`/menu/photo/${encodeURIComponent(nv.id)}`, fd);
+        nv.foto = r.foto;
+      } catch (err) {
+        const d = err instanceof ApiError ? (err.body as { detail?: unknown } | null)?.detail : null;
+        toast.error(typeof d === "string" ? d : "Non sono riuscito a caricare l'immagine");
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
+    } else if (photoGone && nv.foto) {
+      delete nv.foto;
+      apiDelete(`/menu/photo/${encodeURIComponent(nv.id)}`).catch(() => {});
+    }
+    const l = link.trim();
+    if (photoFile || !l) {
+      delete nv.foto_src;
+      delete nv.foto_err;
+    } else if (l !== v.foto_src) {
+      if (!/^https:\/\//i.test(l)) {
+        toast.error("Il link dell'immagine deve iniziare con https://");
+        return;
+      }
+      nv.foto_src = l;
+      delete nv.foto_err;
+    }
     for (const key of ["cantina", "descrizione", "abbinamento", "nota", "allergeni"] as const) {
       const t = f[key].trim();
       if (t) nv[key] = t;
@@ -389,10 +436,78 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
               ))}
             </select>
           </div>
-          {(k === "vini" || f.cantina) && (
+          {(k !== "cibo" || f.cantina) && (
             <div className="fld">
-              <label>Cantina / produttore</label>
+              <label>{k === "vini" ? "Cantina / produttore" : "Marca / produttore"}</label>
               <input value={f.cantina} onChange={(e) => set("cantina", e.target.value)} />
+            </div>
+          )}
+          {k !== "cibo" && (
+            <div className="fld">
+              <label>Logo / foto</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 8,
+                    background: "#F6F0E8",
+                    display: "grid",
+                    placeItems: "center",
+                    padding: 6,
+                    flex: "none",
+                    overflow: "hidden",
+                  }}
+                >
+                  {preview ? (
+                    <img src={preview} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+                  ) : (
+                    <ImagePlus className="i" style={{ color: "#8A7B6C" }} />
+                  )}
+                </div>
+                <button type="button" className="btn sm" onClick={() => fileInput.current?.click()}>
+                  <ImagePlus className="i" /> {preview ? "Cambia" : "Scegli"}
+                </button>
+                {preview && (
+                  <button
+                    type="button"
+                    className="btn sm"
+                    onClick={() => {
+                      setPhotoFile(null);
+                      setPhotoGone(true);
+                      setPreview(null);
+                    }}
+                  >
+                    <X className="i" /> Togli
+                  </button>
+                )}
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    setPhotoFile(file);
+                    setPhotoGone(false);
+                    setPreview(URL.createObjectURL(file));
+                  }}
+                />
+              </div>
+              <input
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                placeholder="oppure incolla il link di un'immagine (https://…)"
+                inputMode="url"
+                style={{ marginTop: 8 }}
+              />
+              {v.foto_src && (v.foto_err ?? 0) >= 3 ? (
+                <small style={{ color: "#FDBA74" }}>Non sono riuscito a scaricare questo link: prova con un altro o carica il file.</small>
+              ) : v.foto_src ? (
+                <small style={{ color: "var(--mtx)" }}>Immagine in arrivo: il sito la scarica da solo entro pochi minuti.</small>
+              ) : null}
             </div>
           )}
           <div className="fld">
@@ -470,8 +585,8 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
             <button type="button" className="btn" onClick={close}>
               Annulla
             </button>
-            <button type="submit" className="btn pri">
-              Salva
+            <button type="submit" className="btn pri" disabled={busy}>
+              {busy ? "Carico l'immagine…" : "Salva"}
             </button>
           </div>
         </div>

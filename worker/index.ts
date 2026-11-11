@@ -1,8 +1,8 @@
 // Punto di ingresso del server su Cloudflare:
 // - /api/*  → le API (Supabase dietro)
 // - tutto il resto → il sito (file statici della cartella dist, con fallback alla app React)
-// - lavori programmati: backup notturno e traduzioni mancanti ogni ora
-import { dailyJob, fillMissingTranslations, handleApi, sendPendingNotifications } from "./api";
+// - lavori programmati: backup notturno; ogni ora traduzioni mancanti, email e loghi del menù da scaricare
+import { dailyJob, fillMissingTranslations, handleApi, importMenuPhotos, sendPendingNotifications } from "./api";
 import { Db } from "./db";
 import type { Ctx, Env } from "./env";
 
@@ -23,6 +23,7 @@ export default {
         (async () => {
           await fillMissingTranslations(env, db).catch((e) => console.error("translate-missing failed", e));
           await sendPendingNotifications(env, db).catch((e) => console.error("pending notifications failed", e));
+          await importMenuPhotos(db).catch((e) => console.error("menu photos failed", e));
         })(),
       );
     }

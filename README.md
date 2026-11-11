@@ -13,6 +13,10 @@ La pagina iniziale `/` divide **Cosa bere** e **Cosa mangiare**:
 - `/menu/<settore>/<voce>` — scheda del singolo articolo
 - `/admin/menu` — gestione (stesso PIN delle birre; pulsante "Cucina e bar" nella dashboard)
 
+Ogni voce di vini, distillati e caffetteria può avere un **logo/foto**: si carica dalla scheda della voce
+in `/admin/menu` (file dal telefono) oppure incollando il link di un'immagine, che il server scarica da solo
+(subito dopo il salvataggio e poi ogni ora; file `menu/<id>` nello Storage, inclusi nei backup).
+
 I dati stanno in Supabase nella tabella `settings`, riga `menu` (un documento JSON);
 a ogni salvataggio la versione precedente resta nella riga `menu_prev`. Il menù è incluso in "Esporta file" dei backup.
 

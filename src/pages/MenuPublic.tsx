@@ -27,6 +27,7 @@ import {
   dayLabel,
   eur,
   findItem,
+  fotoUrl,
   hasSizes,
   isSettore,
   lavagnaOf,
@@ -274,7 +275,13 @@ function Row({ k, v, i, group }: { k: SettoreKey; v: Voce; i: number; group: str
       to={`/menu/${k}/${encodeURIComponent(v.id)}`}
       state={{ group }}
     >
-      <span className="sw" />
+      {fotoUrl(v) ? (
+        <span className="logo">
+          <img src={fotoUrl(v)!} alt="" loading="lazy" decoding="async" />
+        </span>
+      ) : (
+        <span className="sw" />
+      )}
       <span className="mid">
         <span className="nm">{v.nome}</span>
         {sub && <span className="sub">{sub}</span>}
@@ -545,6 +552,11 @@ export function MenuVoce() {
             <span className="badge-ev">
               <Star className="i" aria-hidden /> In evidenza
             </span>
+          )}
+          {fotoUrl(v) && (
+            <div className="logo-big">
+              <img src={fotoUrl(v)!} alt={v.cantina || v.nome} decoding="async" />
+            </div>
           )}
           {v.cantina && <p className="cant">{v.cantina}</p>}
           <div className="top">

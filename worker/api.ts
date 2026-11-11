@@ -657,6 +657,8 @@ on(
     const prev = await loadMenu(c.db);
     if (prev) await c.db.insert("settings", { id: "menu_prev", data: prev }, { onConflict: "id" });
     await c.db.insert("settings", { id: "menu", data: clean }, { onConflict: "id" });
+    if (JSON.stringify(clean).includes('"foto_src"'))
+      c.ctx.waitUntil(importMenuPhotos(c.db).catch((e) => console.error("menu photos failed", e)));
     return json(clean);
   }),
 );
@@ -778,6 +780,77 @@ on(
   }),
 );
 
+// Logo / foto delle voci del menù (vini, distillati, caffetteria…): file "menu/<id>" nello storage.
+// Il numero di versione restituito va salvato nella voce (campo "foto") dal browser.
+const MENU_PHOTO_ID = /^[a-z0-9-]{1,60}$/;
+const menuPhotoId = (id: string) => {
+  if (!MENU_PHOTO_ID.test(id)) throw new HttpError(404, "Voce non valida");
+  return id;
+};
+
+on("GET", "/menu/photo/:id", async (c) => serveFile(c, `menu/${menuPhotoId(c.params[0])}`, 31536000));
+
+on(
+  "POST",
+  "/menu/photo/:id",
+  admin(async (c) => {
+    const id = menuPhotoId(c.params[0]);
+    const fd = await formData(c.req);
+    const { data, type } = await readImage(fd.get("file"));
+    await c.db.putFile(`menu/${id}`, data, type);
+    return json({ foto: stamp(true) });
+  }),
+);
+
+on(
+  "DELETE",
+  "/menu/photo/:id",
+  admin(async (c) => {
+    await c.db.removeFiles([`menu/${menuPhotoId(c.params[0])}`]);
+    return json({ ok: true });
+  }),
+);
+
+/**
+ * Loghi indicati con un link (campo "foto_src" della voce): il server scarica l'immagine,
+ * la conserva nello storage e la collega alla voce. Parte dopo ogni salvataggio del menù
+ * e ogni ora; dopo 3 tentativi falliti il link viene lasciato perdere.
+ */
+export async function importMenuPhotos(db: Db): Promise<number> {
+  const doc = await loadMenu(db);
+  if (!doc) return 0;
+  let changed = 0;
+  for (const k of MENU_KEYS)
+    for (const s of ((doc.settori as Row | undefined)?.[k] as Row[] | undefined) ?? [])
+      for (const v of (s.voci as Row[] | undefined) ?? []) {
+        const src = v.foto_src;
+        if (typeof src !== "string" || typeof v.id !== "string" || !MENU_PHOTO_ID.test(v.id)) continue;
+        if (Number(v.foto_err ?? 0) >= 3) continue;
+        try {
+          if (!/^https:\/\//i.test(src)) throw new Error("link non valido");
+          const res = await fetch(src, {
+            headers: { "User-Agent": "BirreriaCassinaMenu/1.0 (menu digitale; contatto: gestore)", Accept: "image/*" },
+            redirect: "follow",
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = new Uint8Array(await res.arrayBuffer());
+          if (data.length > MAX_IMAGE) throw new Error("troppo grande");
+          const type = imageType(data);
+          if (!type) throw new Error("formato non supportato");
+          await db.putFile(`menu/${v.id}`, data, type);
+          v.foto = stamp(true);
+          delete v.foto_src;
+          delete v.foto_err;
+        } catch (e) {
+          console.error(`menu photo ${v.id}: ${(e as Error).message}`);
+          v.foto_err = Number(v.foto_err ?? 0) + 1;
+        }
+        changed++;
+      }
+  if (changed) await db.insert("settings", { id: "menu", data: doc }, { onConflict: "id" });
+  return changed;
+}
+
 // ------------------------------------------------------------------ backup
 type BackupInfo = { id: string; created_at: string; kind: string; beer_count: number };
 
@@ -810,6 +883,12 @@ on(
     if (settings.logo_version) asset_urls.push({ id: "logo", url: `/api/logo?v=${settings.logo_version}` });
     for (const b of beers)
       if (b.foto_version) asset_urls.push({ id: `beer:${b.id}`, url: `/api/beers/${b.id}/photo?v=${b.foto_version}` });
+    const menuDoc = await loadMenu(c.db);
+    for (const k of MENU_KEYS)
+      for (const s of ((menuDoc?.settori as Row | undefined)?.[k] as Row[] | undefined) ?? [])
+        for (const v of (s.voci as Row[] | undefined) ?? [])
+          if (v.foto && typeof v.id === "string" && MENU_PHOTO_ID.test(v.id))
+            asset_urls.push({ id: `menu:${v.id}`, url: `/api/menu/photo/${v.id}?v=${v.foto}` });
     return json({
       format: EXPORT_FORMAT,
       version: 1,
@@ -817,7 +896,7 @@ on(
       beers,
       settings: { id: "main", ...settings },
       ratings,
-      menu: await loadMenu(c.db),
+      menu: menuDoc,
       assets: [],
       asset_urls,
     });
@@ -834,6 +913,7 @@ on(
     if (id === "logo") path = "logo";
     else if (/^beer:[A-Za-z0-9-]{1,80}$/.test(id)) path = `beers/${id.slice(5)}`;
     else if (/^icon:(180|192|512)$/.test(id)) path = `icons/${id.slice(5)}`;
+    else if (/^menu:[a-z0-9-]{1,60}$/.test(id)) path = `menu/${id.slice(5)}`;
     if (!path) throw new HttpError(400, "File di backup non valido");
     const data = new Uint8Array(await c.req.arrayBuffer());
     if (data.length > MAX_IMAGE) throw new HttpError(413, "Immagine troppo grande (max 5 MB)");
