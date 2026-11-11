@@ -157,3 +157,65 @@ export async function suggestPairing(env: Env, nome: string, stile: string, desc
   if (!text) throw new AiUnavailable("risposta vuota");
   return text.slice(0, 300);
 }
+
+// ------------------------------------------------------------------ menù cucina, vini, distillati, caffetteria
+const MENU_SYSTEM =
+  "You translate the menu (food, wines, spirits, coffee bar and soft drinks) of Birreria Cassina, a historic Italian pub. " +
+  "You receive a JSON object of items keyed by id; each item has some Italian fields: nome = name of a dish or drink, " +
+  "descrizione = description or ingredients, abbinamento = suggested beer pairing, nota = short note for guests, " +
+  "allergeni = allergen notes, titolo = menu section title, testo = section text, nota_finale = general note of the menu. " +
+  "Translate every field into English, German, French and Spanish (Spain). " +
+  "For nome: translate generic names a foreign guest would not understand (e.g. \"Spremuta d'arancia\" → en \"Fresh orange juice\", " +
+  "\"Tagliere di salumi\" → en \"Cured meats board\"); keep unchanged proper names, wine labels, brands, producers and " +
+  "Italian names famous abroad (Tiramisù, Bruschetta, Espresso, Cappuccino, Prosecco, Grappa, Amaro, Spritz…). " +
+  "Keep a natural, appetising menu tone, keep brand names, numbers and units as they are, and do not add information. " +
+  "Allergen notes must stay precise and literal. Reply with JSON only, no markdown: an object with the same ids, " +
+  'each value exactly in this shape: {"en":{"<field>":"..."},"de":{...},"fr":{...},"es":{...}} with exactly the fields received.';
+
+const MENU_BATCH = 15;
+
+export type MenuTr = Record<(typeof LANGS)[number], Record<string, string>>;
+
+/**
+ * items: [{id, src: {campo: testo italiano}}] → {id: {en: {...}, de, fr, es}}.
+ * Si ferma al primo errore (es. troppe richieste a Gemini): quello che manca lo riprende il giro successivo.
+ */
+export async function translateMenuItems(
+  env: Env,
+  items: { id: string; src: Record<string, string> }[],
+  maxBatches: number,
+): Promise<{ done: Record<string, MenuTr>; error?: string }> {
+  const done: Record<string, MenuTr> = {};
+  for (let i = 0, n = 0; i < items.length && n < maxBatches; i += MENU_BATCH, n++) {
+    const batch = items.slice(i, i + MENU_BATCH);
+    const payload: Row = {};
+    for (const b of batch) payload[b.id] = b.src;
+    try {
+      const data = parseJson(await ask(env, MENU_SYSTEM, JSON.stringify(payload), { json: true, timeout: 90_000 }));
+      for (const b of batch) {
+        const got = data[b.id] as Row | undefined;
+        if (!got) continue;
+        const out = {} as MenuTr;
+        let ok = true;
+        for (const l of LANGS) {
+          const tr = got[l] as Row | undefined;
+          if (!tr) {
+            ok = false;
+            break;
+          }
+          out[l] = {};
+          for (const f of Object.keys(b.src)) {
+            const t = String(tr[f] ?? "").trim().slice(0, 1000);
+            if (t) out[l][f] = t;
+          }
+        }
+        if (ok) done[b.id] = out;
+      }
+    } catch (e) {
+      const msg = e instanceof AiUnavailable ? e.message : String(e);
+      console.warn("menu translation failed:", msg.slice(0, 300));
+      return { done, error: msg.slice(0, 200) };
+    }
+  }
+  return { done };
+}

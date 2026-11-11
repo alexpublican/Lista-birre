@@ -2,6 +2,7 @@
 // I dati stanno in un unico documento JSON (worker/api.ts → GET/PUT /api/menu).
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
+import type { Lang } from "@/lib/i18n";
 
 export type SettoreKey = "cibo" | "vini" | "distillati" | "bar";
 export const SETTORI: SettoreKey[] = ["cibo", "vini", "distillati", "bar"];
@@ -33,24 +34,32 @@ export interface Voce {
   /** Link di un'immagine da scaricare: ci pensa il server (subito dopo il salvataggio e ogni ora). */
   foto_src?: string;
   foto_err?: number;
+  /** Traduzioni automatiche (o corrette a mano) dei testi italiani: vedi worker/menuTr.ts. */
+  tr?: TrMap;
+  /** Impronta del testo italiano da cui viene ogni traduzione. */
+  trh?: TrMap;
 }
+
+export type TrLang = Exclude<Lang, "it">;
+export const TR_LANGS: TrLang[] = ["en", "de", "fr", "es"];
+export type TrMap = Partial<Record<TrLang, Record<string, string>>>;
 
 // I 14 allergeni del Reg. UE 1169/2011 (Allegato II), nell'ordine e con la numerazione ufficiale.
 export const ALLERGENI = [
-  { k: "glutine", n: 1, it: "Cereali contenenti glutine", en: "Gluten" },
-  { k: "crostacei", n: 2, it: "Crostacei", en: "Crustaceans" },
-  { k: "uova", n: 3, it: "Uova", en: "Eggs" },
-  { k: "pesce", n: 4, it: "Pesce", en: "Fish" },
-  { k: "arachidi", n: 5, it: "Arachidi", en: "Peanuts" },
-  { k: "soia", n: 6, it: "Soia", en: "Soy" },
-  { k: "latte", n: 7, it: "Latte e lattosio", en: "Milk" },
-  { k: "frutta_guscio", n: 8, it: "Frutta a guscio", en: "Tree nuts" },
-  { k: "sedano", n: 9, it: "Sedano", en: "Celery" },
-  { k: "senape", n: 10, it: "Senape", en: "Mustard" },
-  { k: "sesamo", n: 11, it: "Semi di sesamo", en: "Sesame" },
-  { k: "solfiti", n: 12, it: "Anidride solforosa e solfiti", en: "Sulphites" },
-  { k: "lupini", n: 13, it: "Lupini", en: "Lupin" },
-  { k: "molluschi", n: 14, it: "Molluschi", en: "Molluscs" },
+  { k: "glutine", n: 1, it: "Cereali contenenti glutine", en: "Gluten", de: "Glutenhaltiges Getreide", fr: "Céréales contenant du gluten", es: "Cereales con gluten" },
+  { k: "crostacei", n: 2, it: "Crostacei", en: "Crustaceans", de: "Krebstiere", fr: "Crustacés", es: "Crustáceos" },
+  { k: "uova", n: 3, it: "Uova", en: "Eggs", de: "Eier", fr: "Œufs", es: "Huevos" },
+  { k: "pesce", n: 4, it: "Pesce", en: "Fish", de: "Fisch", fr: "Poisson", es: "Pescado" },
+  { k: "arachidi", n: 5, it: "Arachidi", en: "Peanuts", de: "Erdnüsse", fr: "Arachides", es: "Cacahuetes" },
+  { k: "soia", n: 6, it: "Soia", en: "Soy", de: "Soja", fr: "Soja", es: "Soja" },
+  { k: "latte", n: 7, it: "Latte e lattosio", en: "Milk", de: "Milch und Laktose", fr: "Lait et lactose", es: "Leche y lactosa" },
+  { k: "frutta_guscio", n: 8, it: "Frutta a guscio", en: "Tree nuts", de: "Schalenfrüchte", fr: "Fruits à coque", es: "Frutos de cáscara" },
+  { k: "sedano", n: 9, it: "Sedano", en: "Celery", de: "Sellerie", fr: "Céleri", es: "Apio" },
+  { k: "senape", n: 10, it: "Senape", en: "Mustard", de: "Senf", fr: "Moutarde", es: "Mostaza" },
+  { k: "sesamo", n: 11, it: "Semi di sesamo", en: "Sesame", de: "Sesamsamen", fr: "Graines de sésame", es: "Sésamo" },
+  { k: "solfiti", n: 12, it: "Anidride solforosa e solfiti", en: "Sulphites", de: "Schwefeldioxid und Sulfite", fr: "Anhydride sulfureux et sulfites", es: "Dióxido de azufre y sulfitos" },
+  { k: "lupini", n: 13, it: "Lupini", en: "Lupin", de: "Lupinen", fr: "Lupin", es: "Altramuces" },
+  { k: "molluschi", n: 14, it: "Molluschi", en: "Molluscs", de: "Weichtiere", fr: "Mollusques", es: "Moluscos" },
 ] as const;
 export type AllergeneKey = (typeof ALLERGENI)[number]["k"];
 
@@ -65,6 +74,8 @@ export interface Sezione {
   nota?: string;
   lavagna?: boolean;
   aggiornata?: string;
+  tr?: TrMap;
+  trh?: TrMap;
 }
 
 /** Voce tolta dal menu e messa nello storico: si ricorda da quale sezione veniva. */
@@ -83,6 +94,8 @@ export interface MenuData {
   note_finali?: string[];
   /** Storico per reparto: voci tolte dal menu, pronte da rimettere. Lo vede solo il gestore. */
   archivio?: Record<SettoreKey, VoceArchiviata[]>;
+  /** Traduzioni delle note finali: { impronta del testo italiano: { en: "…", … } }. */
+  note_tr?: Record<string, Partial<Record<TrLang, string>>>;
 }
 
 export const SET: Record<SettoreKey, { label: string; short?: string; sub: string; word: [string, string] }> = {
@@ -103,7 +116,7 @@ export function normalizeMenu(d: MenuData | null | undefined): MenuData {
   if (!settori.cibo.some((s) => s.lavagna)) settori.cibo = [{ id: "s-lavagna", titolo: "Speciali del giorno", lavagna: true, voci: [] }, ...settori.cibo];
   const archivio = { cibo: [], vini: [], distillati: [], bar: [] } as Record<SettoreKey, VoceArchiviata[]>;
   for (const k of SETTORI) if (d?.archivio && Array.isArray(d.archivio[k])) archivio[k] = d.archivio[k];
-  return { versione: 1, settori, note_finali: d?.note_finali ?? [], archivio };
+  return { versione: 1, settori, note_finali: d?.note_finali ?? [], archivio, ...(d?.note_tr ? { note_tr: d.note_tr } : {}) };
 }
 
 export function useMenu() {
@@ -135,10 +148,19 @@ export function today(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export function dayLabel(iso?: string): string {
+const DAY: Record<Lang, { locale: string; today: string; updated: string }> = {
+  it: { locale: "it-IT", today: "Oggi, ", updated: "Aggiornata " },
+  en: { locale: "en-GB", today: "Today, ", updated: "Updated " },
+  de: { locale: "de-DE", today: "Heute, ", updated: "Aktualisiert: " },
+  fr: { locale: "fr-FR", today: "Aujourd'hui, ", updated: "Mise à jour : " },
+  es: { locale: "es-ES", today: "Hoy, ", updated: "Actualizada: " },
+};
+
+export function dayLabel(iso?: string, lang: Lang = "it"): string {
   if (!iso) return "";
-  const s = new Date(iso + "T12:00").toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
-  return (iso === today() ? "Oggi, " : "Aggiornata ") + s;
+  const d = DAY[lang];
+  const s = new Date(iso + "T12:00").toLocaleDateString(d.locale, { weekday: "long", day: "numeric", month: "long" });
+  return (iso === today() ? d.today : d.updated) + s;
 }
 
 export const lavagnaOf = (m: MenuData) => m.settori.cibo.find((s) => s.lavagna);
@@ -199,4 +221,38 @@ export function ripristina(m: MenuData, k: SettoreKey, id: string): string | nul
   }
   s.voci!.push({ ...v, disponibile: true });
   return s.lavagna ? "Lavagna" : s.titolo;
+}
+
+// ------------------------------------------------------------------ traduzioni
+/** Impronta corta di un testo (FNV-1a 32 bit): la stessa funzione è in worker/menuTr.ts. */
+export function trHash(s: string): string {
+  let h = 0x811c9dc5;
+  const t = s.trim();
+  for (let i = 0; i < t.length; i++) {
+    h ^= t.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
+type Translatable = { tr?: TrMap; trh?: TrMap };
+
+/** Traduzione ancora valida di un campo (null se manca o se il testo italiano è cambiato). */
+export function trValid(o: Translatable, l: TrLang, field: string, it: string | undefined): string | null {
+  if (!it?.trim()) return null;
+  const t = o.tr?.[l]?.[field];
+  return t && o.trh?.[l]?.[field] === trHash(it) ? t : null;
+}
+
+/** Testo nella lingua scelta, con l'italiano come riserva. */
+export function trText<T extends Translatable>(o: T, field: keyof T & string, lang: Lang): string {
+  const it = typeof o[field] === "string" ? (o[field] as string) : "";
+  if (lang === "it") return it;
+  return trValid(o, lang, field, it) ?? it;
+}
+
+/** Nota finale del menù nella lingua scelta. */
+export function noteText(m: MenuData, n: string, lang: Lang): string {
+  if (lang === "it") return n;
+  return m.note_tr?.[trHash(n)]?.[lang] || n;
 }

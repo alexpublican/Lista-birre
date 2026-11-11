@@ -4,7 +4,7 @@ import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Archive, ArrowLeft, ChevronDown, ChevronUp, Eye, History, ImagePlus, Pencil, Plus, RotateCcw, Search, Trash2, X } from "lucide-react";
+import { Archive, ArrowLeft, ChevronDown, ChevronUp, Eye, History, ImagePlus, Languages, Pencil, Plus, RotateCcw, Search, Trash2, X } from "lucide-react";
 import HistoricHeader from "@/components/HistoricHeader";
 import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { resizeImage } from "@/lib/images";
@@ -22,8 +22,12 @@ import {
   norm,
   ripristina,
   today,
+  TR_LANGS,
+  trHash,
+  trValid,
   uniqueId,
   useMenu,
+  type TrLang,
   type AllergeneKey,
   type MenuData,
   type SettoreKey,
@@ -68,7 +72,11 @@ export default function MenuAdmin() {
       if (ctx?.prev) qc.setQueryData(MENU_KEY, ctx.prev);
       toast.error("Salvataggio non riuscito, riprova");
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: MENU_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: MENU_KEY });
+      // il server traduce i testi nuovi in sottofondo: ricontrollo tra poco
+      setTimeout(() => qc.invalidateQueries({ queryKey: TR_KEY }), 1500);
+    },
   });
 
   if (me.isLoading) return <div className="min-h-screen" />;
@@ -101,6 +109,7 @@ export default function MenuAdmin() {
                 <span className={`dot${save.isPending ? " warn" : menu.isError ? " err" : ""}`} />
                 {save.isPending ? "Salvataggio…" : menu.isError ? "Errore di caricamento" : "Cucina, vini, distillati e caffetteria"}
               </p>
+              <TranslateStatus />
             </div>
             <div className="acts">
               <Link className="btn" to="/admin/dashboard">
@@ -450,6 +459,84 @@ function Check({ label, on, set }: { label: string; on: boolean; set: (v: boolea
   );
 }
 
+// ------------------------------------------------------------------ traduzioni automatiche
+const TR_KEY = ["menu-tr"] as const;
+const LANG_NAME: Record<TrLang, string> = { en: "Inglese", de: "Tedesco", fr: "Francese", es: "Spagnolo" };
+
+/** Quanti testi aspettano la traduzione + pulsante "Traduci adesso". */
+function TranslateStatus() {
+  const qc = useQueryClient();
+  const st = useQuery({
+    queryKey: TR_KEY,
+    queryFn: () => apiGet<{ remaining: number }>("/menu/translate"),
+    refetchInterval: (q) => ((q.state.data?.remaining ?? 0) > 0 ? 60_000 : false),
+  });
+  const [busy, setBusy] = useState(false);
+  const left = st.data?.remaining ?? 0;
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      for (let i = 0; i < 30; i++) {
+        const r = await apiPost<{ translated: number; remaining: number; error?: string }>("/menu/translate");
+        qc.setQueryData(TR_KEY, { remaining: r.remaining });
+        if (r.error) {
+          toast.error(
+            /429|quota|RESOURCE_EXHAUSTED/i.test(r.error)
+              ? "Gemini chiede una pausa: riprova tra un minuto (o lascia fare al controllo orario)"
+              : r.error.includes("chiave")
+                ? r.error
+                : "Traduzione non riuscita adesso: ci riprova da solo ogni ora",
+          );
+          break;
+        }
+        if (r.remaining === 0) {
+          toast.success("Menù tradotto in inglese, tedesco, francese e spagnolo");
+          break;
+        }
+        if (r.translated === 0) break;
+      }
+    } catch {
+      toast.error("Traduzione non riuscita, riprova");
+    } finally {
+      setBusy(false);
+      qc.invalidateQueries({ queryKey: MENU_KEY });
+    }
+  };
+
+  if (!st.data) return null;
+  return (
+    <p className="status">
+      <Languages className="i" />
+      {busy ? "Traduco…" : left === 0 ? "Traduzioni EN · DE · FR · ES complete" : `${left} ${left === 1 ? "testo" : "testi"} da tradurre`}
+      {left > 0 && (
+        <button type="button" className="btn sm" onClick={run} disabled={busy}>
+          Traduci adesso
+        </button>
+      )}
+    </p>
+  );
+}
+
+const TR_FIELDS = [
+  { f: "nome", label: "Nome", long: false },
+  { f: "descrizione", label: "Descrizione", long: true },
+  { f: "abbinamento", label: "Abbinamento", long: false },
+  { f: "nota", label: "Nota", long: false },
+  { f: "allergeni", label: "Note allergeni", long: false },
+] as const;
+type TrField = (typeof TR_FIELDS)[number]["f"];
+type TrForm = Record<TrLang, Record<TrField, string>>;
+
+function trForm(v: Voce): TrForm {
+  const out = {} as TrForm;
+  for (const l of TR_LANGS) {
+    out[l] = {} as Record<TrField, string>;
+    for (const { f } of TR_FIELDS) out[l][f] = trValid(v, l, f, v[f]) ?? "";
+  }
+  return out;
+}
+
 function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreKey; si: number | null; vi: number | null }; close: () => void; commit: Commit }) {
   const { k, vi } = dlg;
   const secOpts = m.settori[k].map((s, i) => ({ s, i })).filter((x) => x.s.voci);
@@ -477,6 +564,10 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
     piccante: !!v.piccante,
   });
   const [busy, setBusy] = useState(false);
+  // Traduzioni: quelle attuali, correggibili a mano (vuoto = la rifà il sito in automatico)
+  const [tr0] = useState(() => trForm(v));
+  const [tr, setTr] = useState(() => trForm(v));
+  const [trLang, setTrLang] = useState<TrLang>("en");
   // Logo / foto: file scelto ora (da caricare al salvataggio) oppure "togli" quello esistente.
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoGone, setPhotoGone] = useState(false);
@@ -542,6 +633,21 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
     else delete nv.allergeni_lista;
     if (f.senzaAllergeni && !al.length) nv.senza_allergeni = true;
     else delete nv.senza_allergeni;
+    // Traduzioni toccate a mano: valgono per il testo italiano attuale.
+    for (const l of TR_LANGS)
+      for (const { f: field } of TR_FIELDS) {
+        const it = nv[field];
+        const val = tr[l][field].trim();
+        if (!it || val === tr0[l][field].trim()) continue;
+        if (val) {
+          nv.tr = { ...nv.tr, [l]: { ...nv.tr?.[l], [field]: val } };
+          nv.trh = { ...nv.trh, [l]: { ...nv.trh?.[l], [field]: trHash(it) } };
+        } else if (nv.tr?.[l]) {
+          const rest = { ...nv.tr[l] };
+          delete rest[field];
+          nv.tr = { ...nv.tr, [l]: rest };
+        }
+      }
     nv.disponibile = f.disponibile;
     for (const key of ["evidenza", "novita", "vegano", "piccante"] as const) {
       if (f[key]) nv[key] = true;
@@ -726,6 +832,42 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
               <p className="hint">Se non segni nulla, il cliente legge "Chiedi pure al nostro personale".</p>
             </div>
           )}
+          <details className="trbox">
+            <summary>
+              <Languages className="i" /> Traduzioni (EN · DE · FR · ES)
+            </summary>
+            <p className="hint">
+              Le fa il sito in automatico dopo il salvataggio. Qui puoi correggerle: una traduzione corretta a mano resta finché non cambi il testo
+              italiano. Lascia vuoto per farla rifare.
+            </p>
+            <div className="checks" style={{ margin: "8px 0" }}>
+              {TR_LANGS.map((l) => (
+                <button key={l} type="button" className={`ck${trLang === l ? " on" : ""}`} onClick={() => setTrLang(l)}>
+                  {LANG_NAME[l]}
+                </button>
+              ))}
+            </div>
+            {TR_FIELDS.filter(({ f: field }) => (f[field] ?? "").trim()).map(({ f: field, label, long }) => (
+              <div className="fld" key={field} style={{ marginTop: 8 }}>
+                <label>
+                  {label} <span style={{ color: "var(--dim)" }}>· {(f[field] as string).trim().slice(0, 60)}</span>
+                </label>
+                {long ? (
+                  <textarea
+                    value={tr[trLang][field]}
+                    placeholder="Verrà tradotta in automatico"
+                    onChange={(e) => setTr((o) => ({ ...o, [trLang]: { ...o[trLang], [field]: e.target.value } }))}
+                  />
+                ) : (
+                  <input
+                    value={tr[trLang][field]}
+                    placeholder={field === "nome" ? "Uguale all'italiano se è un nome proprio" : "Verrà tradotta in automatico"}
+                    onChange={(e) => setTr((o) => ({ ...o, [trLang]: { ...o[trLang], [field]: e.target.value } }))}
+                  />
+                )}
+              </div>
+            ))}
+          </details>
           <div className="checks">
             <Check label="Disponibile" on={f.disponibile} set={(x) => set("disponibile", x)} />
             <Check label="In evidenza" on={f.evidenza} set={(x) => set("evidenza", x)} />

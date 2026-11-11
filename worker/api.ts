@@ -1,6 +1,7 @@
 // Tutte le API del sito sotto /api — stesso comportamento del vecchio backend FastAPI.
 import { AiUnavailable, describeBeer, suggestPairing, translateFields, translateMany, type TrSource } from "./ai";
 import { Db, enc } from "./db";
+import { mergeMenuTranslations, menuTodoCount, translateMenu } from "./menuTr";
 import { arrivalEmail, sendEmail } from "./email";
 import type { Ctx, Env } from "./env";
 import {
@@ -617,7 +618,7 @@ on(
 // Tutto il menù sta in un unico documento JSON nella tabella settings (riga id = "menu").
 // A ogni salvataggio la versione precedente viene copiata nella riga "menu_prev" (paracadute).
 const MENU_KEYS = ["cibo", "vini", "distillati", "bar"] as const;
-const MENU_MAX_BYTES = 400_000;
+const MENU_MAX_BYTES = 900_000; // con le traduzioni in 4 lingue
 
 function parseMenu(body: Row): Row {
   const settori = body.settori as Row | undefined;
@@ -648,6 +649,7 @@ function parseMenu(body: Row): Row {
     ]),
   );
   const clean: Row = { versione: 1, settori: Object.fromEntries(MENU_KEYS.map((k) => [k, settori[k]])), note_finali: note, archivio };
+  if (body.note_tr && typeof body.note_tr === "object" && !Array.isArray(body.note_tr)) clean.note_tr = body.note_tr;
   if (JSON.stringify(clean).length > MENU_MAX_BYTES) throw new HttpError(413, "Menù troppo grande");
   return clean;
 }
@@ -665,13 +667,34 @@ on(
   admin(async (c) => {
     const clean = parseMenu(await readJson(c.req));
     const prev = await loadMenu(c.db);
+    mergeMenuTranslations(prev, clean);
     if (prev) await c.db.insert("settings", { id: "menu_prev", data: prev }, { onConflict: "id" });
     await c.db.insert("settings", { id: "menu", data: clean }, { onConflict: "id" });
     if (JSON.stringify(clean).includes('"foto_src"'))
       c.ctx.waitUntil(importMenuPhotos(c.db).catch((e) => console.error("menu photos failed", e)));
+    // Testi nuovi o cambiati: un primo giro di traduzioni subito, il resto lo completa il controllo orario.
+    if (menuTodoCount(clean) > 0)
+      c.ctx.waitUntil(translateMenu(c.env, c.db, loadMenu, 1).catch((e) => console.error("menu translation failed", e)));
     return json(clean);
   }),
 );
+
+/** Quante voci del menù aspettano ancora la traduzione. */
+on(
+  "GET",
+  "/menu/translate",
+  admin(async (c) => json({ remaining: menuTodoCount(await loadMenu(c.db)) })),
+);
+
+/** "Traduci adesso" dalla gestione: un giro breve (il browser richiama finché non resta nulla). */
+on(
+  "POST",
+  "/menu/translate",
+  admin(async (c) => json(await translateMenu(c.env, c.db, loadMenu, 2))),
+);
+
+/** Controllo orario: completa le traduzioni mancanti del menù. */
+export const fillMenuTranslations = (env: Env, db: Db) => translateMenu(env, db, loadMenu, 20);
 
 // ------------------------------------------------------------------ immagini
 function imageType(bytes: Uint8Array): string | null {
@@ -972,6 +995,7 @@ on(
     if (data.menu && typeof data.menu === "object") {
       try {
         menu = parseMenu(data.menu as Row);
+        mergeMenuTranslations(null, menu);
       } catch {
         menu = null; // un menù rovinato nel file non blocca il ripristino delle birre
       }
