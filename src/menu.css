@@ -161,7 +161,8 @@
 .mx .row{display:flex;align-items:center;gap:12px;min-width:0;border-radius:8px;border:1px solid var(--border);background:rgba(26,21,18,.8);padding:12px;text-decoration:none;transition:border-color .15s,background-color .15s,transform .15s}
 .mx .row:hover{border-color:#57422F;background:var(--rowh)}
 .mx .row:active{transform:scale(.99)}
-.mx .row.out{opacity:.5;filter:saturate(.5)}
+/* esaurito: si attenua tutto tranne il bollino rosso "Esaurito" */
+.mx .row.out>:not(.mid),.mx .row.out .nm,.mx .row.out .sub,.mx .row.out .tags>:not(.tg-out){opacity:.5;filter:saturate(.5)}
 .mx .row .sw{width:6px;align-self:stretch;border-radius:4px;background:color-mix(in srgb,var(--c) 70%,transparent);flex:none}
 .mx .row .mid{min-width:0;flex:1}
 /* logo del prodotto (vini, distillati, caffetteria): tessera chiara così si leggono anche i loghi scuri */
@@ -182,7 +183,7 @@
 .mx .tgi svg{width:13px;height:13px;display:block}
 .mx .tgi.tg-hot{color:#F87171;border-color:#EF4444;background:rgba(239,68,68,.12)}
 .mx .tg-new{border-color:#38BDF8;background:rgba(125,211,252,.12);color:#7DD3FC}
-.mx .tg-out{border-color:#44403C;background:#292524;color:#A8A29E}
+.mx .tg-out{border-color:#EF4444;background:#7F1D1D;color:#FECACA;font-weight:600}
 .mx .tg-pair{border-color:#57422F;color:#E5D5C5}
 .mx .row .rt{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
 .mx .price{font-family:var(--head);font-size:18px;font-weight:700;white-space:nowrap;color:var(--ct)}
@@ -243,7 +244,7 @@
 .mx .crumbs a.c2{font-size:13px;color:var(--mtx);text-decoration:none}
 .mx .crumbs a.c2:hover{color:var(--ct)}
 .mx .card{position:relative;border-radius:8px;border:1px solid var(--border);border-left:4px solid var(--c);background:linear-gradient(135deg,color-mix(in srgb,var(--cbg) 55%,#1C1713) 0%,#1C1713 70%);padding:22px 20px}
-.mx .card.out{opacity:.6;filter:saturate(.5)}
+.mx .card.out>:not(.pills),.mx .card.out .pills>:not(.tg-out){opacity:.6;filter:saturate(.5)}
 .mx .badge-ev{position:absolute;top:-11px;right:16px;display:inline-flex;align-items:center;gap:4px;border-radius:999px;border:1px solid rgba(245,158,11,.6);background:#3B260E;padding:2px 10px;font-size:11px;font-weight:500;letter-spacing:.04em;color:var(--gold);text-transform:uppercase}
 .mx .card .cant{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ct);margin:0 0 4px}
 .mx .card h1{font-family:var(--head);font-size:30px;line-height:1.15;font-weight:700;color:#FAF4EE;margin:0}
