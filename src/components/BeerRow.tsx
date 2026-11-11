@@ -85,7 +85,7 @@ export default function BeerRow({
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
             <span
-              className="font-heading truncate text-lg leading-tight font-semibold text-[#FAF4EE]"
+              className="font-heading line-clamp-2 min-w-0 text-lg leading-tight font-semibold break-words text-[#FAF4EE]"
               data-testid="beer-row-name"
             >
               {beer.nome}
@@ -123,10 +123,10 @@ export default function BeerRow({
               {beer.formati.map((f, i) => (
                 <span
                   key={i}
-                  className="flex items-baseline justify-end gap-1.5 whitespace-nowrap"
+                  className="flex flex-col items-end whitespace-nowrap sm:flex-row sm:items-baseline sm:justify-end sm:gap-1.5"
                   data-testid={`beer-row-size-${i}`}
                 >
-                  <span className="text-[11px] text-[#BFB0A3]">
+                  <span className="text-[11px] leading-tight text-[#BFB0A3]">
                     {f.tipo ? `${t(f.tipo)} ` : ""}
                     {f.nome}
                   </span>
