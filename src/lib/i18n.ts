@@ -303,25 +303,62 @@ const listeners = new Set<() => void>();
 
 const isLang = (v: string | null | undefined): v is Lang => LANGS.some((l) => l.code === v);
 
-// A language the customer picked wins; otherwise follow the phone's language if we have it, else Italian.
-function readLang(): Lang {
-  const saved = typeof localStorage !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-  if (isLang(saved)) return saved;
-  const phone = typeof navigator !== "undefined" ? (navigator.languages?.length ? navigator.languages : [navigator.language]) : [];
-  for (const tag of phone) {
+// The site opens in the language of the customer's phone / tablet / computer.
+// If that language isn't one of ours (e.g. Dutch, Japanese) we use English, which tourists read best.
+// A language the customer picks by hand is remembered, but only while the device keeps the same
+// language: if the device language changes, the site follows the device again.
+function deviceLang(): Lang {
+  const tags = typeof navigator !== "undefined" ? (navigator.languages?.length ? navigator.languages : [navigator.language]) : [];
+  for (const tag of tags) {
     const code = tag?.toLowerCase().split("-")[0];
     if (isLang(code)) return code;
   }
-  return "it";
+  return tags.length ? "en" : "it";
+}
+
+function deviceTag(): string {
+  return typeof navigator !== "undefined" ? (navigator.languages?.[0] ?? navigator.language ?? "") : "";
+}
+
+function readLang(): Lang {
+  const device = deviceLang();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw) as { lang?: string; device?: string };
+      if (isLang(saved.lang) && saved.device === deviceTag()) return saved.lang;
+    }
+  } catch {
+    // old format ("en") or storage unavailable: just follow the device
+  }
+  return device;
+}
+
+const TITLES: Record<Lang, string> = {
+  it: "Birreria Cassina · Menù",
+  en: "Birreria Cassina · Menu",
+  de: "Birreria Cassina · Speisekarte",
+  fr: "Birreria Cassina · Carte",
+  es: "Birreria Cassina · Carta",
+};
+
+function applyToPage(lang: Lang) {
+  if (typeof document === "undefined") return;
+  document.documentElement.lang = lang;
+  document.title = TITLES[lang];
 }
 
 let current: Lang = readLang();
-if (typeof document !== "undefined") document.documentElement.lang = current;
+applyToPage(current);
 
 export function setLang(lang: Lang): void {
   current = lang;
-  localStorage.setItem(STORAGE_KEY, lang);
-  document.documentElement.lang = lang;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ lang, device: deviceTag() }));
+  } catch {
+    // private mode: the choice lasts until the page is closed
+  }
+  applyToPage(lang);
   listeners.forEach((l) => l());
 }
 
