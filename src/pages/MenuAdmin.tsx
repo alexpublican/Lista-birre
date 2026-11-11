@@ -4,7 +4,7 @@ import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronDown, ChevronUp, Eye, ImagePlus, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Archive, ArrowLeft, ChevronDown, ChevronUp, Eye, History, ImagePlus, Pencil, Plus, RotateCcw, Search, Trash2, X } from "lucide-react";
 import HistoricHeader from "@/components/HistoricHeader";
 import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { resizeImage } from "@/lib/images";
@@ -15,10 +15,12 @@ import {
   ALLERGENI,
   SETTORI,
   allergeniOf,
+  archivia,
   eur,
   fotoUrl,
   hasSizes,
   norm,
+  ripristina,
   today,
   uniqueId,
   useMenu,
@@ -27,6 +29,7 @@ import {
   type SettoreKey,
   type Sezione,
   type Voce,
+  type VoceArchiviata,
 } from "@/lib/menu";
 import "@/menu.css";
 
@@ -161,8 +164,8 @@ export default function MenuAdmin() {
                     if (sure === "lav") {
                       setSure(null);
                       commit((n) => {
-                        n.settori[tab][si].voci = [];
-                      }, "Lavagna svuotata");
+                        for (let i = (n.settori[tab][si].voci?.length ?? 0) - 1; i >= 0; i--) archivia(n, tab, si, i);
+                      }, "Lavagna svuotata: i piatti sono nello storico");
                     } else setSure("lav");
                   }}
                 >
@@ -285,6 +288,8 @@ export default function MenuAdmin() {
             );
           })}
 
+          {m && <Storico m={m} k={tab} needle={needle} commit={commit} />}
+
           <div style={{ marginTop: 28 }}>
             <button type="button" className="btn sm" onClick={() => setDlg({ kind: "notes" })} disabled={!m}>
               <Pencil className="i" /> Note in fondo al menù
@@ -301,6 +306,132 @@ export default function MenuAdmin() {
 }
 
 type Commit = (fn: (n: MenuData) => void, msg: string) => void;
+
+const dataBreve = (iso?: string) => (iso ? iso.split("-").reverse().join("/") : "");
+
+/**
+ * Storico del reparto aperto: le voci tolte dal menu, divise per sezione (Primi, Secondi, Dolci…),
+ * nello stesso ordine del menu. Da qui si rimettono nel menu con un tocco o si eliminano per sempre.
+ */
+function Storico({ m, k, needle, commit }: { m: MenuData; k: SettoreKey; needle: string; commit: Commit }) {
+  const [open, setOpen] = useState(false);
+  const [sure, setSure] = useState<string | null>(null);
+  const all = m.archivio?.[k] ?? [];
+  const list = all.filter((v) => !needle || norm([v.nome, v.descrizione, v.cantina, v.sez_titolo].join(" ")).includes(needle));
+  const show = open || (!!needle && list.length > 0);
+
+  // Gruppi: prima le sezioni che esistono ancora (in ordine di menu), poi quelle eliminate (per titolo).
+  const groups: { key: string; titolo: string; voci: VoceArchiviata[] }[] = [];
+  const used = new Set<VoceArchiviata>();
+  for (const s of m.settori[k]) {
+    const voci = list.filter((v) => v.sez === s.id);
+    voci.forEach((v) => used.add(v));
+    if (voci.length) groups.push({ key: s.id, titolo: s.lavagna ? "Speciali del giorno (lavagna)" : s.titolo, voci });
+  }
+  for (const v of list) {
+    if (used.has(v)) continue;
+    const t = v.sez_titolo || "Altro";
+    let g = groups.find((x) => x.key === "old:" + t);
+    if (!g) groups.push((g = { key: "old:" + t, titolo: `${t} (sezione non più nel menu)`, voci: [] }));
+    g.voci.push(v);
+  }
+
+  const elimina = (v: VoceArchiviata) => {
+    if (sure !== v.id) return setSure(v.id);
+    setSure(null);
+    commit((n) => {
+      n.archivio![k] = n.archivio![k].filter((x) => x.id !== v.id);
+    }, `${v.nome} eliminata definitivamente`);
+    if (v.foto) apiDelete(`/menu/photo/${encodeURIComponent(v.id)}`).catch(() => {});
+  };
+
+  return (
+    <section style={{ marginTop: 32 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={show}
+        style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 2px", textAlign: "left" }}
+      >
+        <History className="i" style={{ color: "#F59E0B", width: 20, height: 20 }} />
+        <span style={{ fontFamily: "var(--head)", fontSize: 20, fontWeight: 600, color: "#FAF5EF" }}>
+          Storico · {k === "cibo" ? "Cucina" : SET[k].short || SET[k].label}
+        </span>
+        <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--dim)" }}>{all.length}</span>
+        <ChevronDown className="i" style={{ color: "var(--dim)", transform: show ? "rotate(180deg)" : undefined, transition: "transform .15s" }} />
+      </button>
+      {show && (
+        <>
+          <p style={{ margin: "4px 2px 0", fontSize: 13, color: "var(--mtx)" }}>
+            Voci tolte dal menu, con foto, prezzo, allergeni e descrizione. «Rimetti» le riporta nella loro sezione.
+          </p>
+          {!list.length ? (
+            <div className="textbox" style={{ marginTop: 12, border: "1px dashed var(--border)", borderRadius: 12 }}>
+              {needle ? "Nessuna voce dello storico corrisponde alla ricerca." : "Ancora niente nello storico. Quando togli una voce dal menu (Modifica → «Togli dal menu») finisce qui."}
+            </div>
+          ) : (
+            groups.map((g) => (
+              <section key={g.key} className="asec">
+                <div className="asec-h">
+                  <span className="t">{g.titolo}</span>
+                  <span className="n">{g.voci.length}</span>
+                </div>
+                {g.voci.map((v) => (
+                  <div key={v.id} className="arow">
+                    {fotoUrl(v) && (
+                      <img
+                        src={fotoUrl(v)!}
+                        alt=""
+                        loading="lazy"
+                        style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 6, background: "#F6F0E8", padding: 3, flex: "none" }}
+                      />
+                    )}
+                    <div className="an">
+                      <b>{v.nome}</b>
+                      <small>
+                        {[
+                          hasSizes(v)
+                            ? [v.calice != null ? eur(v.calice) : "", v.bottiglia != null ? eur(v.bottiglia) : ""].filter(Boolean).join(" / ")
+                            : eur(v.prezzo),
+                          v.archiviata_il && `tolta il ${dataBreve(v.archiviata_il)}`,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </small>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn sm"
+                      title="Rimetti nel menu"
+                      onClick={() => {
+                        const s = m.settori[k].find((x) => x.id === v.sez && x.voci);
+                        const dove = s ? (s.lavagna ? "Lavagna" : s.titolo) : v.sez_titolo || "Altro";
+                        commit((n) => {
+                          ripristina(n, k, v.id);
+                        }, `${v.nome} è tornata nel menu, in «${dove}»`);
+                      }}
+                    >
+                      <RotateCcw className="i" /> Rimetti
+                    </button>
+                    <button
+                      type="button"
+                      className={sure === v.id ? "btn sm danger" : "ib del"}
+                      title="Elimina per sempre"
+                      aria-label="Elimina per sempre"
+                      onClick={() => elimina(v)}
+                    >
+                      {sure === v.id ? "Sicuro?" : <Trash2 className="i" />}
+                    </button>
+                  </div>
+                ))}
+              </section>
+            ))
+          )}
+        </>
+      )}
+    </section>
+  );
+}
 
 function Overlay({ children, close }: { children: ReactNode; close: () => void }) {
   return (
@@ -345,7 +476,6 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
     vegano: !!v.vegano,
     piccante: !!v.piccante,
   });
-  const [sureDel, setSureDel] = useState(false);
   const [busy, setBusy] = useState(false);
   // Logo / foto: file scelto ora (da caricare al salvataggio) oppure "togli" quello esistente.
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -608,16 +738,14 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
           {!isNew && (
             <button
               type="button"
-              className="btn danger"
+              className="btn"
+              title="La voce sparisce dal menu ma resta nello storico, da dove puoi rimetterla"
               onClick={() => {
-                if (!sureDel) return setSureDel(true);
-                commit((n) => {
-                  n.settori[k][si0].voci!.splice(vi!, 1);
-                }, "Voce eliminata");
+                commit((n) => archivia(n, k, si0, vi!), `${v.nome} spostata nello storico`);
                 close();
               }}
             >
-              <Trash2 className="i" /> {sureDel ? "Conferma eliminazione" : "Elimina"}
+              <Archive className="i" /> Togli dal menu
             </button>
           )}
           <div className="r">
@@ -705,12 +833,13 @@ function SecDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreKe
               onClick={() => {
                 if (!sureDel) return setSureDel(true);
                 commit((n) => {
+                  for (let i = (n.settori[k][si].voci?.length ?? 0) - 1; i >= 0; i--) archivia(n, k, si, i);
                   n.settori[k].splice(si, 1);
-                }, "Sezione eliminata");
+                }, s.voci?.length ? "Sezione eliminata: le voci sono nello storico" : "Sezione eliminata");
                 close();
               }}
             >
-              <Trash2 className="i" /> {sureDel ? (s.voci?.length ? `Elimina anche ${s.voci.length} voci?` : "Conferma") : "Elimina sezione"}
+              <Trash2 className="i" /> {sureDel ? (s.voci?.length ? `Confermi? Le ${s.voci.length} voci vanno nello storico` : "Conferma") : "Elimina sezione"}
             </button>
           )}
           <div className="r">

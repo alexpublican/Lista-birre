@@ -637,7 +637,17 @@ function parseMenu(body: Row): Row {
     }
   }
   const note = Array.isArray(body.note_finali) ? (body.note_finali as unknown[]).filter((n) => typeof n === "string") : [];
-  const clean: Row = { versione: 1, settori: Object.fromEntries(MENU_KEYS.map((k) => [k, settori[k]])), note_finali: note };
+  // Storico per reparto (voci tolte dal menu): le voci non valide vengono scartate, non bloccano il salvataggio.
+  const arch = (body.archivio && typeof body.archivio === "object" ? body.archivio : {}) as Row;
+  const archivio = Object.fromEntries(
+    MENU_KEYS.map((k) => [
+      k,
+      (Array.isArray(arch[k]) ? (arch[k] as Row[]) : []).filter(
+        (v) => v && typeof v === "object" && typeof v.id === "string" && typeof v.nome === "string",
+      ),
+    ]),
+  );
+  const clean: Row = { versione: 1, settori: Object.fromEntries(MENU_KEYS.map((k) => [k, settori[k]])), note_finali: note, archivio };
   if (JSON.stringify(clean).length > MENU_MAX_BYTES) throw new HttpError(413, "Menù troppo grande");
   return clean;
 }
@@ -884,11 +894,13 @@ on(
     for (const b of beers)
       if (b.foto_version) asset_urls.push({ id: `beer:${b.id}`, url: `/api/beers/${b.id}/photo?v=${b.foto_version}` });
     const menuDoc = await loadMenu(c.db);
-    for (const k of MENU_KEYS)
-      for (const s of ((menuDoc?.settori as Row | undefined)?.[k] as Row[] | undefined) ?? [])
-        for (const v of (s.voci as Row[] | undefined) ?? [])
-          if (v.foto && typeof v.id === "string" && MENU_PHOTO_ID.test(v.id))
-            asset_urls.push({ id: `menu:${v.id}`, url: `/api/menu/photo/${v.id}?v=${v.foto}` });
+    for (const k of MENU_KEYS) {
+      const inMenu = (((menuDoc?.settori as Row | undefined)?.[k] as Row[] | undefined) ?? []).flatMap((s) => (s.voci as Row[] | undefined) ?? []);
+      const inArchivio = ((menuDoc?.archivio as Row | undefined)?.[k] as Row[] | undefined) ?? [];
+      for (const v of [...inMenu, ...inArchivio])
+        if (v.foto && typeof v.id === "string" && MENU_PHOTO_ID.test(v.id))
+          asset_urls.push({ id: `menu:${v.id}`, url: `/api/menu/photo/${v.id}?v=${v.foto}` });
+    }
     return json({
       format: EXPORT_FORMAT,
       version: 1,

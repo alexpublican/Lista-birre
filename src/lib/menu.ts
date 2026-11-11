@@ -67,10 +67,22 @@ export interface Sezione {
   aggiornata?: string;
 }
 
+/** Voce tolta dal menu e messa nello storico: si ricorda da quale sezione veniva. */
+export interface VoceArchiviata extends Voce {
+  /** id della sezione di provenienza (per rimetterla al suo posto). */
+  sez: string;
+  /** Titolo della sezione al momento dell'archiviazione (se la sezione non c'è più). */
+  sez_titolo: string;
+  /** Data in cui è stata tolta dal menu (AAAA-MM-GG). */
+  archiviata_il: string;
+}
+
 export interface MenuData {
   versione?: number;
   settori: Record<SettoreKey, Sezione[]>;
   note_finali?: string[];
+  /** Storico per reparto: voci tolte dal menu, pronte da rimettere. Lo vede solo il gestore. */
+  archivio?: Record<SettoreKey, VoceArchiviata[]>;
 }
 
 export const SET: Record<SettoreKey, { label: string; short?: string; sub: string; word: [string, string] }> = {
@@ -89,7 +101,9 @@ export function normalizeMenu(d: MenuData | null | undefined): MenuData {
   const settori = { cibo: [], vini: [], distillati: [], bar: [] } as Record<SettoreKey, Sezione[]>;
   for (const k of SETTORI) if (d && d.settori && Array.isArray(d.settori[k])) settori[k] = d.settori[k];
   if (!settori.cibo.some((s) => s.lavagna)) settori.cibo = [{ id: "s-lavagna", titolo: "Speciali del giorno", lavagna: true, voci: [] }, ...settori.cibo];
-  return { versione: 1, settori, note_finali: d?.note_finali ?? [] };
+  const archivio = { cibo: [], vini: [], distillati: [], bar: [] } as Record<SettoreKey, VoceArchiviata[]>;
+  for (const k of SETTORI) if (d?.archivio && Array.isArray(d.archivio[k])) archivio[k] = d.archivio[k];
+  return { versione: 1, settori, note_finali: d?.note_finali ?? [], archivio };
 }
 
 export function useMenu() {
@@ -141,7 +155,11 @@ export function findItem(m: MenuData, id: string) {
 }
 
 export function uniqueId(m: MenuData, name: string): string {
-  const used = new Set<string>([...allItems(m).map((x) => x.v.id), ...SETTORI.flatMap((k) => m.settori[k].map((s) => s.id))]);
+  const used = new Set<string>([
+    ...allItems(m).map((x) => x.v.id),
+    ...SETTORI.flatMap((k) => m.settori[k].map((s) => s.id)),
+    ...SETTORI.flatMap((k) => (m.archivio?.[k] ?? []).map((v) => v.id)),
+  ]);
   const base = slug(name) || "voce";
   let id = base;
   let i = 2;
@@ -152,3 +170,33 @@ export function uniqueId(m: MenuData, name: string): string {
 export const fotoUrl = (v: Voce) => (v.foto ? `/api/menu/photo/${encodeURIComponent(v.id)}?v=${encodeURIComponent(v.foto)}` : null);
 
 export const hasSizes = (v: Voce) => v.calice != null || v.bottiglia != null;
+
+/** Toglie la voce dal menu e la mette in cima allo storico del reparto (modifica `m`). */
+export function archivia(m: MenuData, k: SettoreKey, si: number, vi: number) {
+  const s = m.settori[k][si];
+  const [v] = s.voci!.splice(vi, 1);
+  if (!v) return;
+  const arch: VoceArchiviata = { ...v, sez: s.id, sez_titolo: s.lavagna ? "Speciali del giorno" : s.titolo, archiviata_il: today() };
+  m.archivio = m.archivio ?? { cibo: [], vini: [], distillati: [], bar: [] };
+  m.archivio[k] = [arch, ...(m.archivio[k] ?? []).filter((x) => x.id !== v.id)];
+}
+
+/**
+ * Rimette nel menu una voce dello storico, nella sua sezione di sempre (in fondo).
+ * Se nel frattempo la sezione è stata eliminata, la ricrea con lo stesso titolo.
+ * Restituisce il titolo della sezione in cui è tornata.
+ */
+export function ripristina(m: MenuData, k: SettoreKey, id: string): string | null {
+  const list = m.archivio?.[k] ?? [];
+  const i = list.findIndex((x) => x.id === id);
+  if (i < 0) return null;
+  const [a] = list.splice(i, 1);
+  const { sez, sez_titolo, archiviata_il: _d, ...v } = a;
+  let s = m.settori[k].find((x) => x.id === sez && x.voci);
+  if (!s) {
+    s = { id: sez && !m.settori[k].some((x) => x.id === sez) ? sez : uniqueId(m, "s-" + sez_titolo), titolo: sez_titolo || "Altro", voci: [] };
+    m.settori[k].push(s);
+  }
+  s.voci!.push({ ...v, disponibile: true });
+  return s.lavagna ? "Lavagna" : s.titolo;
+}
