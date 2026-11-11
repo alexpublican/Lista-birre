@@ -276,15 +276,14 @@
 .mx .alg-wrap{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .4s cubic-bezier(.2,.8,.2,1),opacity .3s}
 .mx .alg.is-open .alg-wrap{grid-template-rows:1fr;opacity:1}
 .mx .alg-in{overflow:hidden;min-height:0}
-.mx .alg-in>:first-child{margin-top:16px}
-.mx .alg-t{margin:0;font-family:var(--head);font-style:italic;font-size:16px;color:#F3E6D8}
-.mx .alg-list{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:1fr;gap:2px 18px}
-@media(min-width:520px){.mx .alg-list{grid-template-columns:1fr 1fr}}
-.mx .alg-list li{display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px dashed rgba(217,119,6,.18);font-size:14px;color:#EADBCC}
-.mx .alg-list small{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:1px}
-.mx .alg-n{display:grid;place-items:center;flex:none;width:26px;height:26px;border-radius:999px;background:#3B260E;border:1px solid rgba(245,158,11,.5);font-family:var(--mono);font-size:11px;font-weight:600;color:var(--gold)}
-.mx .alg-note{margin:14px 0 0;font-size:14px;line-height:1.5;color:#E5D5C5}
-.mx .alg-foot{margin:16px 0 2px;font-size:12px;line-height:1.5;color:var(--mtx)}
+.mx .alg-in>:first-child{margin-top:10px}
+.mx .alg-t{margin:0;font-family:var(--head);font-style:italic;font-size:14px;color:#F3E6D8}
+.mx .alg-list{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0 14px}
+.mx .alg-list li{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(217,119,6,.14);font-size:13px;line-height:1.25;color:#EADBCC}
+.mx .alg-list small{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-top:1px}
+.mx .alg-n{display:grid;place-items:center;flex:none;width:20px;height:20px;border-radius:999px;background:#3B260E;border:1px solid rgba(245,158,11,.5);font-family:var(--mono);font-size:10px;font-weight:600;color:var(--gold)}
+.mx .alg-note{margin:10px 0 0;font-size:13px;line-height:1.45;color:#E5D5C5}
+.mx .alg-foot{margin:10px 0 2px;font-size:11px;line-height:1.45;color:var(--mtx)}
 .mx .alg-foot small{display:block;margin-top:2px;color:var(--dim);font-style:italic}
 @media (prefers-reduced-motion:reduce){.mx .alg-wrap,.mx .alg-chev{transition:none}}
 .mx .others{margin-top:32px}
