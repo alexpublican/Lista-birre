@@ -24,6 +24,8 @@ import HistoricHeader from "@/components/HistoricHeader";
 import BrandMark from "@/components/BrandMark";
 import VenueInfo from "@/components/VenueInfo";
 import PhotoViewer from "@/components/PhotoViewer";
+import Galleria from "@/components/Galleria";
+import { fotoLocaleUrl, useLocale } from "@/lib/locale";
 import {
   SETTORI_BERE,
   allergeniOf,
@@ -131,6 +133,8 @@ function Loading({ menu }: { menu: ReturnType<typeof useMenu> }) {
 export function MenuIngresso() {
   const { t } = useI18n();
   const [params] = useSearchParams();
+  const locale = useLocale();
+  const coverFoto = locale.data?.foto[0];
   // Vecchi link /?s=spina → pagina birre
   const s = params.get("s");
   if (s) return <Navigate to={`/birre?s=${encodeURIComponent(s)}`} replace />;
@@ -172,10 +176,59 @@ export function MenuIngresso() {
               </span>
             </Link>
           </div>
+          <div className="loc-wrap">
+            <Link className="loc-btn t-locale foam" style={{ animationDelay: "220ms" }} to="/locale" data-testid="entry-locale">
+              <span className="bgart" />
+              {coverFoto && <Photo src={fotoLocaleUrl(coverFoto)} />}
+              <span className="shade" />
+              <span>
+                <span className="k">{t("loc_kicker")}</span>
+                <h2>
+                  {t("loc_a")} <em>{t("loc_b")}</em>
+                </h2>
+              </span>
+              <span className="go" aria-hidden>
+                <Ic I={ArrowRight} />
+              </span>
+            </Link>
+          </div>
         </div>
       </div>
       <MenuFooter />
     </div>
+  );
+}
+
+// ------------------------------------------------------------------ il locale
+export function MenuLocale() {
+  const { t } = useI18n();
+  const locale = useLocale();
+  const foto = locale.data?.foto ?? [];
+  return (
+    <Shell>
+      <div className="loc-page t-locale">
+        <BackLink className="back" to="/">
+          <Ic I={ArrowLeft} /> {t("m_home")}
+        </BackLink>
+        <header className="loc-head foam">
+          <p className="eyebrow">{t("loc_kicker")}</p>
+          <h1>
+            {t("loc_a")} <em>{t("loc_b")}</em>
+          </h1>
+          <div className="brass-rule" />
+          <p>{t("loc_sub")}</p>
+        </header>
+        <div className="foam" style={{ animationDelay: "120ms" }}>
+          {locale.isLoading ? (
+            <div className="loc-empty animate-pulse" />
+          ) : foto.length ? (
+            <Galleria foto={foto} />
+          ) : (
+            <div className="loc-empty">{t("loc_empty")}</div>
+          )}
+        </div>
+      </div>
+    </Shell>
   );
 }
 

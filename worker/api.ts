@@ -1,7 +1,7 @@
 // Tutte le API del sito sotto /api — stesso comportamento del vecchio backend FastAPI.
 import { AiUnavailable, describeBeer, suggestPairing, translateFields, translateMany, type TrSource } from "./ai";
 import { Db, enc } from "./db";
-import { mergeMenuTranslations, menuTodoCount, translateMenu } from "./menuTr";
+import { mergeMenuTranslations, menuTodoCount, translateMenu, trHash } from "./menuTr";
 import { arrivalEmail, sendEmail } from "./email";
 import type { Ctx, Env } from "./env";
 import {
@@ -884,6 +884,144 @@ export async function importMenuPhotos(db: Db): Promise<number> {
   return changed;
 }
 
+// ------------------------------------------------------------------ il locale (galleria foto)
+// Le foto della pagina «Il locale» scorrono nell'ordine salvato qui: riga "locale" della tabella settings,
+// { foto: [{ id, v, didascalia?, tr?, trh? }] }. I file stanno nello storage come "locale/<id>".
+// La didascalia (facoltativa) si scrive in italiano: la traduce Gemini, come i testi del menù.
+const LOCALE_PHOTO_ID = /^[a-z0-9]{6,40}$/;
+const LOCALE_MAX = 40;
+const CAPTION_MAX = 140;
+
+function cleanLocaleFoto(list: unknown): Row[] {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set<string>();
+  const out: Row[] = [];
+  for (const f of list as Row[]) {
+    if (!f || typeof f !== "object" || typeof f.id !== "string" || !LOCALE_PHOTO_ID.test(f.id) || seen.has(f.id)) continue;
+    if (typeof f.v !== "string" || !f.v) continue;
+    seen.add(f.id);
+    const row: Row = { id: f.id, v: f.v };
+    const cap = typeof f.didascalia === "string" ? f.didascalia.trim().slice(0, CAPTION_MAX) : "";
+    if (cap) {
+      row.didascalia = cap;
+      if (f.tr && typeof f.tr === "object" && !Array.isArray(f.tr) && typeof f.trh === "string") {
+        row.tr = f.tr;
+        row.trh = f.trh;
+      }
+    }
+    out.push(row);
+    if (out.length >= LOCALE_MAX) break;
+  }
+  return out;
+}
+
+async function loadLocale(db: Db): Promise<{ foto: Row[] }> {
+  const doc = await db.one<{ data: Row }>("settings", "select=data&id=eq.locale");
+  return { foto: cleanLocaleFoto(doc?.data?.foto) };
+}
+
+async function saveLocale(db: Db, doc: { foto: Row[] }) {
+  await db.insert("settings", { id: "locale", data: { foto: cleanLocaleFoto(doc.foto) } }, { onConflict: "id" });
+}
+
+const localeTodo = (doc: { foto: Row[] }) =>
+  doc.foto.filter((f) => typeof f.didascalia === "string" && f.didascalia && f.trh !== trHash(f.didascalia as string));
+
+/** Traduce le didascalie nuove o cambiate. Restituisce quante ne restano da tradurre. */
+async function translateLocale(env: Env, db: Db): Promise<number> {
+  const todo = localeTodo(await loadLocale(db));
+  if (!todo.length) return 0;
+  const res = await translateMany(
+    env,
+    todo.map((f) => ({ id: f.id as string, src: { descrizione: f.didascalia as string } })),
+  );
+  // Rilegge prima di salvare: nel frattempo il gestore potrebbe aver cambiato qualcosa.
+  const doc = await loadLocale(db);
+  for (const f of doc.foto) {
+    const r = res[f.id as string];
+    if (!r || typeof f.didascalia !== "string" || !f.didascalia) continue;
+    const src = todo.find((t) => t.id === f.id);
+    if (!src || src.didascalia !== f.didascalia) continue;
+    f.tr = Object.fromEntries(LANGS.map((l) => [l, String(r[`descrizione_${l}`] ?? "")]));
+    f.trh = trHash(f.didascalia);
+  }
+  await saveLocale(db, doc);
+  return localeTodo(doc).length;
+}
+
+/** Controllo orario: didascalie rimaste senza traduzione. */
+export const fillLocaleTranslations = (env: Env, db: Db) => translateLocale(env, db);
+
+const publicLocale = (doc: { foto: Row[] }) => ({
+  foto: doc.foto.map(({ id, v, didascalia, tr }) => ({ id, v, ...(didascalia ? { didascalia, tr: tr ?? {} } : {}) })),
+});
+
+on("GET", "/locale", async (c) => json(publicLocale(await loadLocale(c.db))));
+
+/** Ordine e didascalie (le foto si aggiungono e tolgono con /locale/photo). */
+on(
+  "PUT",
+  "/locale",
+  admin(async (c) => {
+    const body = await readJson(c.req);
+    if (!Array.isArray(body.foto)) throw new HttpError(422, "Elenco foto non valido");
+    const cur = await loadLocale(c.db);
+    const byId = new Map(cur.foto.map((f) => [f.id as string, f]));
+    const next: Row[] = [];
+    for (const f of body.foto as Row[]) {
+      const old = f && typeof f.id === "string" ? byId.get(f.id) : undefined;
+      if (!old) continue;
+      byId.delete(f.id as string);
+      const cap = typeof f.didascalia === "string" ? f.didascalia.trim().slice(0, CAPTION_MAX) : "";
+      next.push({ ...old, didascalia: cap });
+    }
+    next.push(...byId.values()); // foto non nominate (es. aggiunte da un altro dispositivo) restano in fondo
+    const doc = { foto: next };
+    await saveLocale(c.db, doc);
+    const saved = await loadLocale(c.db);
+    if (localeTodo(saved).length)
+      c.ctx.waitUntil(translateLocale(c.env, c.db).catch((e) => console.error("locale translation failed", e)));
+    return json(publicLocale(saved));
+  }),
+);
+
+on("GET", "/locale/photo/:id", async (c) => {
+  const id = c.params[0];
+  if (!LOCALE_PHOTO_ID.test(id)) throw new HttpError(404, "Nessuna foto");
+  return serveFile(c, `locale/${id}`, 31536000);
+});
+
+on(
+  "POST",
+  "/locale/photo",
+  admin(async (c) => {
+    const cur = await loadLocale(c.db);
+    if (cur.foto.length >= LOCALE_MAX) throw new HttpError(422, `Massimo ${LOCALE_MAX} foto`);
+    const fd = await formData(c.req);
+    const { data, type } = await readImage(fd.get("file"));
+    const id = hex(crypto.getRandomValues(new Uint8Array(8)));
+    await c.db.putFile(`locale/${id}`, data, type);
+    const doc = await loadLocale(c.db); // riletto: più foto caricate una dopo l'altra
+    doc.foto.push({ id, v: stamp(true) });
+    await saveLocale(c.db, doc);
+    return json(publicLocale(await loadLocale(c.db)));
+  }),
+);
+
+on(
+  "DELETE",
+  "/locale/photo/:id",
+  admin(async (c) => {
+    const id = c.params[0];
+    if (!LOCALE_PHOTO_ID.test(id)) throw new HttpError(404, "Nessuna foto");
+    const doc = await loadLocale(c.db);
+    doc.foto = doc.foto.filter((f) => f.id !== id);
+    await saveLocale(c.db, doc);
+    await c.db.removeFiles([`locale/${id}`]);
+    return json(publicLocale(await loadLocale(c.db)));
+  }),
+);
+
 // ------------------------------------------------------------------ backup
 type BackupInfo = { id: string; created_at: string; kind: string; beer_count: number };
 
@@ -924,6 +1062,8 @@ on(
         if (v.foto && typeof v.id === "string" && MENU_PHOTO_ID.test(v.id))
           asset_urls.push({ id: `menu:${v.id}`, url: `/api/menu/photo/${v.id}?v=${v.foto}` });
     }
+    const localeDoc = await loadLocale(c.db);
+    for (const f of localeDoc.foto) asset_urls.push({ id: `locale:${f.id}`, url: `/api/locale/photo/${f.id}?v=${f.v}` });
     return json({
       format: EXPORT_FORMAT,
       version: 1,
@@ -932,6 +1072,7 @@ on(
       settings: { id: "main", ...settings },
       ratings,
       menu: menuDoc,
+      locale: localeDoc,
       assets: [],
       asset_urls,
     });
@@ -949,6 +1090,7 @@ on(
     else if (/^beer:[A-Za-z0-9-]{1,80}$/.test(id)) path = `beers/${id.slice(5)}`;
     else if (/^icon:(180|192|512)$/.test(id)) path = `icons/${id.slice(5)}`;
     else if (/^menu:[a-z0-9-]{1,60}$/.test(id)) path = `menu/${id.slice(5)}`;
+    else if (/^locale:[a-z0-9]{6,40}$/.test(id)) path = `locale/${id.slice(7)}`;
     if (!path) throw new HttpError(400, "File di backup non valido");
     const data = new Uint8Array(await c.req.arrayBuffer());
     if (data.length > MAX_IMAGE) throw new HttpError(413, "Immagine troppo grande (max 5 MB)");
@@ -1006,6 +1148,7 @@ on(
       if (prev) await c.db.insert("settings", { id: "menu_prev", data: prev }, { onConflict: "id" });
       await c.db.insert("settings", { id: "menu", data: menu }, { onConflict: "id" });
     }
+    if (data.locale && typeof data.locale === "object") await saveLocale(c.db, { foto: cleanLocaleFoto((data.locale as Row).foto) });
     const info: BackupInfo = { id: "import", created_at: nowIso(), kind: "manual", beer_count: beers.length };
     return json({ restored: info, safety_backup_id: safety });
   }),

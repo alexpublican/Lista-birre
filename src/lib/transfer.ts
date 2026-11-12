@@ -1,4 +1,4 @@
-// Esporta / importa il file di backup completo (birre, info locale, voti, logo e foto).
+// Esporta / importa il file di backup completo (birre, info locale, voti, menù, foto del locale, logo e foto).
 // Il formato del file è lo stesso del vecchio sito, quindi i file esportati da lì si importano qui.
 import { ApiError, apiGet, apiPost } from "./api";
 import type { RestoreResult } from "./beers";
@@ -69,7 +69,7 @@ export async function importBackup(file: File): Promise<RestoreResult> {
   let hasLogo = false;
   for (const a of assets) {
     const id = String(a?.id ?? "");
-    if (id !== "logo" && !id.startsWith("beer:")) continue;
+    if (id !== "logo" && !id.startsWith("beer:") && !id.startsWith("menu:") && !id.startsWith("locale:")) continue;
     let blob: Blob;
     try {
       blob = base64ToBlob(String(a.data));
@@ -93,6 +93,8 @@ export async function importBackup(file: File): Promise<RestoreResult> {
     beers: data.beers ?? [],
     settings: data.settings ?? null,
     ratings: data.ratings ?? [],
+    menu: data.menu ?? null,
+    locale: data.locale ?? null,
     has_logo: hasLogo,
   });
 }

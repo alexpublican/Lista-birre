@@ -7,7 +7,8 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import Poster from "@/pages/Poster";
 import Unsubscribe from "@/pages/Unsubscribe";
 import TvScreen from "@/pages/TvScreen";
-import { MenuBere, MenuIngresso, MenuSettore, MenuVoce } from "@/pages/MenuPublic";
+import { MenuBere, MenuIngresso, MenuLocale, MenuSettore, MenuVoce } from "@/pages/MenuPublic";
+import LocaleAdmin from "@/pages/LocaleAdmin";
 import MenuAdmin from "@/pages/MenuAdmin";
 import { NavMemory } from "@/lib/nav";
 import PullToRefresh from "@/components/PullToRefresh";
@@ -24,7 +25,9 @@ export default function App() {
         <Route path="/bere" element={<MenuBere />} />
         <Route path="/menu/:settore" element={<MenuSettore />} />
         <Route path="/menu/:settore/:id" element={<MenuVoce />} />
+        <Route path="/locale" element={<MenuLocale />} />
         <Route path="/admin/menu" element={<MenuAdmin />} />
+        <Route path="/admin/locale" element={<LocaleAdmin />} />
         <Route path="/classico" element={<PublicMenu />} />
         <Route path="/admin" element={<AdminPin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />

@@ -25,6 +25,7 @@ import {
   Trash2,
   Tv,
   UtensilsCrossed,
+  Images,
   Wrench,
   X,
 } from "lucide-react";
@@ -371,6 +372,9 @@ export default function AdminDashboard() {
             </Popover>
             <Link to="/admin/menu" className={buttonVariants({ variant: "outline" })} data-testid="food-menu-link">
               <UtensilsCrossed className="size-4" /> <span className="hidden sm:inline">{t("kitchen_bar")}</span>
+            </Link>
+            <Link to="/admin/locale" className={buttonVariants({ variant: "outline" })} data-testid="locale-admin-link">
+              <Images className="size-4" /> <span className="hidden sm:inline">{t("loc_photos")}</span>
             </Link>
             <Link to="/" className={buttonVariants({ variant: "outline" })} data-testid="view-menu-link">
               <Eye className="size-4" /> <span className="hidden sm:inline">{t("back_menu")}</span>

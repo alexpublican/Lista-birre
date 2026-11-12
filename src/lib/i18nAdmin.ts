@@ -120,6 +120,17 @@ const A = {
   delete_sec: { it: "Elimina sezione", en: "Delete section", de: "Abschnitt löschen", fr: "Supprimer la section", es: "Eliminar sección" },
   notes_saved: { it: "Note salvate", en: "Notes saved", de: "Hinweise gespeichert", fr: "Notes enregistrées", es: "Notas guardadas" },
   one_per_line: { it: "Una nota per riga", en: "One note per line", de: "Ein Hinweis pro Zeile", fr: "Une note par ligne", es: "Una nota por línea" },
+  loc_sub: { it: "Le foto scorrono ogni 3 secondi nella pagina «Il locale», in quest'ordine", en: "Photos slide every 3 seconds on the «Our pub» page, in this order", de: "Die Fotos wechseln alle 3 Sekunden auf der Seite «Unser Lokal», in dieser Reihenfolge", fr: "Les photos défilent toutes les 3 secondes sur la page «Notre brasserie», dans cet ordre", es: "Las fotos pasan cada 3 segundos en la página «Nuestro local», en este orden" },
+  loc_add: { it: "Aggiungi foto", en: "Add photos", de: "Fotos hinzufügen", fr: "Ajouter des photos", es: "Añadir fotos" },
+  loc_view: { it: "Vedi pagina", en: "View page", de: "Seite ansehen", fr: "Voir la page", es: "Ver página" },
+  loc_uploading: { it: "Caricamento {n} di {m}…", en: "Uploading {n} of {m}…", de: "Hochladen {n} von {m}…", fr: "Envoi {n} sur {m}…", es: "Subiendo {n} de {m}…" },
+  loc_uploaded: { it: "Foto aggiunte", en: "Photos added", de: "Fotos hinzugefügt", fr: "Photos ajoutées", es: "Fotos añadidas" },
+  loc_removed: { it: "Foto tolta", en: "Photo removed", de: "Foto entfernt", fr: "Photo retirée", es: "Foto eliminada" },
+  loc_saved: { it: "Salvato", en: "Saved", de: "Gespeichert", fr: "Enregistré", es: "Guardado" },
+  loc_caption: { it: "Didascalia (facoltativa), es. «Il bancone delle spine»", en: "Caption (optional)", de: "Bildunterschrift (optional)", fr: "Légende (facultative)", es: "Pie de foto (opcional)" },
+  loc_none: { it: "Ancora nessuna foto. Tocca «Aggiungi foto» e scegline una o più dal telefono.", en: "No photos yet. Tap «Add photos» and pick one or more.", de: "Noch keine Fotos. Tippe auf «Fotos hinzufügen».", fr: "Pas encore de photos. Touchez «Ajouter des photos».", es: "Aún no hay fotos. Toca «Añadir fotos»." },
+  loc_tips: { it: "Consigli: meglio foto orizzontali e luminose; 8–15 foto bastano. La didascalia si scrive in italiano e viene tradotta da sola. Con le frecce cambi l'ordine.", en: "Tips: landscape, bright photos work best; 8–15 are enough. Captions are written in Italian and translated automatically. Use the arrows to reorder.", de: "Tipps: helle Querformat-Fotos wirken am besten; 8–15 reichen. Bildunterschriften auf Italienisch, die Übersetzung erfolgt automatisch. Mit den Pfeilen änderst du die Reihenfolge.", fr: "Conseils : photos horizontales et lumineuses ; 8 à 15 suffisent. Les légendes s'écrivent en italien et sont traduites automatiquement. Les flèches changent l'ordre.", es: "Consejos: mejor fotos horizontales y luminosas; 8–15 bastan. El pie de foto se escribe en italiano y se traduce solo. Con las flechas cambias el orden." },
+  loc_max: { it: "Massimo 40 foto", en: "Maximum 40 photos", de: "Maximal 40 Fotos", fr: "40 photos maximum", es: "Máximo 40 fotos" },
 } satisfies Record<string, Record<Lang, string>>;
 
 export type AKey = keyof typeof A;
