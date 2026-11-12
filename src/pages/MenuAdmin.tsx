@@ -325,6 +325,41 @@ type Commit = (fn: (n: MenuData) => void, msg: string) => void;
 
 const dataBreve = (iso?: string) => (iso ? iso.split("-").reverse().join("/") : "");
 
+/** Marca di una voce: la parte del campo «Marca / produttore» prima del «·» (es. "Lagavulin · Islay" → "Lagavulin"). */
+const marcaDi = (v: Voce) => (v.cantina ?? "").split("·")[0].trim();
+const chiaveMarca = (s: string) => norm(s).replace(/\s+/g, " ").trim();
+
+/**
+ * Storico del reparto bere diviso per marca, A→Z; le voci senza marca in «Altro», in fondo.
+ * Se una voce non ha marca ma il nome comincia con una marca conosciuta (es. "Coca-Cola"), va con quella.
+ */
+function gruppiPerMarca(m: MenuData, k: SettoreKey, list: VoceArchiviata[], altro: string) {
+  const note = new Map<string, string>();
+  const tutte = [...m.settori[k].flatMap((s) => s.voci ?? []), ...(m.archivio?.[k] ?? [])];
+  for (const v of tutte) {
+    const mk = marcaDi(v);
+    if (mk && !note.has(chiaveMarca(mk))) note.set(chiaveMarca(mk), mk);
+  }
+  const conosciute = [...note.entries()].sort((x, y) => y[0].length - x[0].length);
+  const map = new Map<string, { key: string; titolo: string; voci: VoceArchiviata[]; marca: true }>();
+  for (const v of list) {
+    let mk = marcaDi(v);
+    if (!mk) {
+      const n = chiaveMarca(v.nome);
+      mk = conosciute.find(([c]) => n === c || n.startsWith(c + " "))?.[1] ?? "";
+    }
+    const key = mk ? chiaveMarca(mk) : "";
+    let g = map.get(key);
+    if (!g) map.set(key, (g = { key: "brand:" + key, titolo: mk ? (note.get(key) ?? mk) : altro, voci: [], marca: true }));
+    g.voci.push(v);
+  }
+  const out = [...map.entries()]
+    .sort(([x], [y]) => (!x ? 1 : !y ? -1 : x.localeCompare(y, "it")))
+    .map(([, g]) => g);
+  for (const g of out) g.voci.sort((x, y) => x.nome.localeCompare(y.nome, "it", { sensitivity: "base" }));
+  return out;
+}
+
 /**
  * Storico del reparto aperto: le voci tolte dal menu, divise per sezione (Primi, Secondi, Dolci…),
  * nello stesso ordine del menu. Da qui si rimettono nel menu con un tocco o si eliminano per sempre.
@@ -337,10 +372,11 @@ function Storico({ m, k, needle, commit }: { m: MenuData; k: SettoreKey; needle:
   const list = all.filter((v) => !needle || norm([v.nome, v.descrizione, v.cantina, v.sez_titolo].join(" ")).includes(needle));
   const show = open || (!!needle && list.length > 0);
 
-  // Gruppi: prima le sezioni che esistono ancora (in ordine di menu), poi quelle eliminate (per titolo).
-  const groups: { key: string; titolo: string; voci: VoceArchiviata[] }[] = [];
-  const used = new Set<VoceArchiviata>();
-  for (const s of m.settori[k]) {
+  // Cucina: gruppi per sezione. Reparto bere (vini, distillati, bar): gruppi per marca.
+  const perMarca = k !== "cibo";
+  const groups: { key: string; titolo: string; voci: VoceArchiviata[]; marca?: boolean }[] = perMarca ? gruppiPerMarca(m, k, list, a("other")) : [];
+  const used = new Set<VoceArchiviata>(perMarca ? list : []);
+  if (!perMarca) for (const s of m.settori[k]) {
     const voci = list.filter((v) => v.sez === s.id);
     voci.forEach((v) => used.add(v));
     if (voci.length) groups.push({ key: s.id, titolo: s.lavagna ? a("hist_board") : s.titolo, voci });
@@ -380,7 +416,7 @@ function Storico({ m, k, needle, commit }: { m: MenuData; k: SettoreKey; needle:
       {show && (
         <>
           <p style={{ margin: "4px 2px 0", fontSize: 13, color: "var(--mtx)" }}>
-            {a("hist_hint")}
+            {a(perMarca ? "hist_hint_brand" : "hist_hint")}
           </p>
           {!list.length ? (
             <div className="textbox" style={{ marginTop: 12, border: "1px dashed var(--border)", borderRadius: 12 }}>
@@ -407,6 +443,7 @@ function Storico({ m, k, needle, commit }: { m: MenuData; k: SettoreKey; needle:
                       <b>{v.nome}</b>
                       <small>
                         {[
+                          g.marca && (m.settori[k].find((x) => x.id === v.sez)?.titolo || v.sez_titolo),
                           hasSizes(v)
                             ? [v.calice != null ? eur(v.calice) : "", v.bottiglia != null ? eur(v.bottiglia) : ""].filter(Boolean).join(" / ")
                             : eur(v.prezzo),
