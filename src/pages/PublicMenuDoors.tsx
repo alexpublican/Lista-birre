@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { previousPath } from "@/lib/nav";
+import { BackLink, previousPath } from "@/lib/nav";
 import { ArrowLeft, ArrowRight, Beer as BeerIcon, Clock, Leaf, Lock, Search, Snowflake, Star, Warehouse, WineOff } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -119,7 +119,15 @@ export default function PublicMenuDoors() {
 
       {!sector ? (
         <main className="mx-auto max-w-6xl px-4 pb-14 sm:px-6" data-testid="doors-home">
-          <section className="flex items-center gap-4 pt-8 pb-6 sm:pt-12">
+          <div className="pt-5">
+            <BackLink
+              to="/bere"
+              className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#3D3126] px-3 text-sm text-[#DFCFC0] transition-[color,border-color,transform] duration-150 hover:border-[#57422F] hover:text-[#FFF9F2] active:scale-95"
+            >
+              <ArrowLeft className="size-4" /> {t("m_drink")}
+            </BackLink>
+          </div>
+          <section className="flex items-center gap-4 pt-4 pb-6 sm:pt-6">
             <BrandMark hideFallback className="size-16 shrink-0 drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] sm:size-20" testId="hero-brand" />
             <div className="min-w-0">
               <p className="font-mono text-[11px] tracking-[0.25em] text-[#FBBF24] uppercase">{t("since")}</p>
