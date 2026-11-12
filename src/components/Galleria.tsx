@@ -204,18 +204,6 @@ export default function Galleria({ foto }: { foto: FotoLocale[] }) {
 
       {n > 1 && (
         <>
-          {n <= 15 && (
-            <div className="gal-bars" aria-hidden>
-              {foto.map((f, i) => (
-                <span key={f.id} className={i === idx ? "on" : ""}>
-                  {i === idx && !paused && <i key={`${idx}-${n}`} style={{ animationDuration: `${INTERVAL}ms` }} />}
-                </span>
-              ))}
-            </div>
-          )}
-          <span className="gal-n" aria-live="polite">
-            {String(idx + 1).padStart(2, "0")} <em>/</em> {String(n).padStart(2, "0")}
-          </span>
           <button type="button" className="gal-a l" onClick={() => go(-1)} aria-label={t("loc_prev")}>
             <ChevronLeft />
           </button>
