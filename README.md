@@ -72,3 +72,4 @@ cp .dev.vars.example .dev.vars   # inserisci le chiavi
 npm run dev:api                  # server su :8787
 npm run dev                      # sito su http://localhost:3000
 ```
+
