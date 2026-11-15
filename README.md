@@ -20,6 +20,14 @@ in `/admin/menu` (file dal telefono) oppure incollando il link di un'immagine, c
 I dati stanno in Supabase nella tabella `settings`, riga `menu` (un documento JSON);
 a ogni salvataggio la versione precedente resta nella riga `menu_prev`. Il menù è incluso in "Esporta file" dei backup.
 
+## Prenotazioni tavoli (staff)
+
+`/prenotazioni/` è il gestionale prenotazioni per lo staff: mappa delle sale, elenco, ordine d'arrivo,
+settimana, banchetti, chiusure e rubrica clienti (solo amministratore). È una pagina unica
+(`public/prenotazioni/index.html`) che parla direttamente con Supabase; si accede con nome e PIN.
+Al primo avvio la pagina chiede di creare l'account amministratore; poi i colleghi si aggiungono da
+menu ⋯ → Staff. Dettagli del database in `supabase/prenotazioni.md`.
+
 ## Com'è fatto
 
 | Parte | Dove | Cosa fa |
