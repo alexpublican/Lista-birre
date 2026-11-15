@@ -25,18 +25,33 @@ function toBlob(canvas: HTMLCanvasElement, type: string, quality?: number): Prom
   );
 }
 
-/** Ridimensiona (lato massimo maxSide) e converte in PNG o WEBP. */
-export async function resizeImage(file: Blob, maxSide: number, type: "image/png" | "image/webp"): Promise<Blob> {
+/** True se l'immagine ha zone trasparenti (es. loghi): in quel caso niente JPEG, che le farebbe nere. */
+function hasAlpha(ctx: CanvasRenderingContext2D, w: number, h: number): boolean {
+  const px = ctx.getImageData(0, 0, w, h).data;
+  for (let i = 3; i < px.length; i += 4) if (px[i] < 255) return true;
+  return false;
+}
+
+/**
+ * Ridimensiona (lato massimo maxSide) e comprime.
+ * Prova il WEBP (leggero, tiene la trasparenza). Safari su iPhone/iPad però non sa crearlo e
+ * restituirebbe un PNG pesantissimo (anche 4-5 MB per una foto): allora usa JPEG, oppure PNG
+ * solo se l'immagine ha parti trasparenti.
+ */
+export async function resizeImage(file: Blob, maxSide: number): Promise<Blob> {
   const bmp = await loadBitmap(file);
   const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(bmp.width * scale));
   canvas.height = Math.max(1, Math.round(bmp.height * scale));
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
   bmp.close();
-  return toBlob(canvas, type, 0.82);
+  const webp = await toBlob(canvas, "image/webp", 0.8);
+  if (webp.type === "image/webp") return webp;
+  if (hasAlpha(ctx, canvas.width, canvas.height)) return webp.type === "image/png" ? webp : toBlob(canvas, "image/png");
+  return toBlob(canvas, "image/jpeg", 0.8);
 }
 
 /** Icona quadrata dell'app: logo centrato su fondo scuro (zona sicura 78%). */
@@ -59,11 +74,11 @@ export async function makeIcon(logo: Blob, size: number): Promise<Blob> {
 
 export const ICON_SIZES = [180, 192, 512] as const;
 
-/** FormData per il logo: logo PNG ≤1024px + le tre icone dell'app. */
+/** FormData per il logo: logo ≤800px (WEBP, o PNG da iPhone) + le tre icone dell'app (PNG). */
 export async function logoFormData(file: Blob): Promise<FormData> {
-  const logo = await resizeImage(file, 1024, "image/png");
+  const logo = await resizeImage(file, 800);
   const fd = new FormData();
-  fd.append("file", logo, "logo.png");
+  fd.append("file", logo, "logo");
   for (const s of ICON_SIZES) fd.append(`icon${s}`, await makeIcon(logo, s), `icon${s}.png`);
   return fd;
 }

@@ -167,7 +167,7 @@ export default function BeerDialog({
       try {
         if (photoFile) {
           const fd = new FormData();
-          fd.append("file", await resizeImage(photoFile, 800, "image/webp"), "photo.webp");
+          fd.append("file", await resizeImage(photoFile, 800), "photo.webp");
           await apiPost<Beer>(`/beers/${saved.id}/photo`, fd);
         } else if (photoRemoved && beer?.foto_version) {
           await apiDelete<Beer>(`/beers/${saved.id}/photo`);

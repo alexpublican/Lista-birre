@@ -49,7 +49,7 @@ export default function LocaleAdmin() {
       for (let i = 0; i < list.length; i++) {
         setBusy(a("loc_uploading", { n: i + 1, m: list.length }));
         const fd = new FormData();
-        fd.append("file", await resizeImage(list[i], 1920, "image/webp"), "foto.webp");
+        fd.append("file", await resizeImage(list[i], 1920), "foto.webp");
         set(await apiPost<LocaleData>("/locale/photo", fd));
         ok++;
       }

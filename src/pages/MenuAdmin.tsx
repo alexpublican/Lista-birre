@@ -626,7 +626,7 @@ function ItemDialog({ m, dlg, close, commit }: { m: MenuData; dlg: { k: SettoreK
       setBusy(true);
       try {
         const fd = new FormData();
-        fd.append("file", await resizeImage(photoFile, 600, "image/webp"), "logo.webp");
+        fd.append("file", await resizeImage(photoFile, 600), "logo.webp");
         const r = await apiPost<{ foto: string }>(`/menu/photo/${encodeURIComponent(nv.id)}`, fd);
         nv.foto = r.foto;
       } catch (err) {
