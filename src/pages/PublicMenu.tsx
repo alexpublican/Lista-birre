@@ -14,7 +14,7 @@ import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const HERO =
-  "https://images.unsplash.com/photo-1567696911980-2eed69a46042?crop=entropy&cs=srgb&fm=jpg&ixlib=rb-4.1.0&q=80&w=1600";
+  "https://images.unsplash.com/photo-1567696911980-2eed69a46042?crop=entropy&cs=srgb&auto=format&ixlib=rb-4.1.0&q=80&w=1600";
 
 type Filter = "all" | Location;
 

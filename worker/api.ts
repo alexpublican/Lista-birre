@@ -835,6 +835,34 @@ on(
   }),
 );
 
+/**
+ * "Alleggerisci foto": sostituisce il file con la versione compressa e aggiorna il numero di
+ * versione nella voce del menù (anche nello storico), così clienti e cache scaricano quella nuova.
+ */
+on(
+  "POST",
+  "/menu/photo/:id/replace",
+  admin(async (c) => {
+    const id = menuPhotoId(c.params[0]);
+    const doc = await loadMenu(c.db);
+    const voci: Row[] = [];
+    for (const k of MENU_KEYS) {
+      for (const s of ((doc?.settori as Row | undefined)?.[k] as Row[] | undefined) ?? [])
+        voci.push(...((s.voci as Row[] | undefined) ?? []));
+      voci.push(...(((doc?.archivio as Row | undefined)?.[k] as Row[] | undefined) ?? []));
+    }
+    const mine = voci.filter((v) => v.id === id && v.foto);
+    if (!doc || !mine.length) throw new HttpError(404, "Voce non trovata");
+    const fd = await formData(c.req);
+    const { data, type } = await readImage(fd.get("file"));
+    await c.db.putFile(`menu/${id}`, data, type);
+    const foto = stamp(true);
+    for (const v of mine) v.foto = foto;
+    await c.db.insert("settings", { id: "menu", data: doc }, { onConflict: "id" });
+    return json({ foto });
+  }),
+);
+
 on(
   "DELETE",
   "/menu/photo/:id",
@@ -1003,6 +1031,24 @@ on(
     await c.db.putFile(`locale/${id}`, data, type);
     const doc = await loadLocale(c.db); // riletto: più foto caricate una dopo l'altra
     doc.foto.push({ id, v: stamp(true) });
+    await saveLocale(c.db, doc);
+    return json(publicLocale(await loadLocale(c.db)));
+  }),
+);
+
+/** "Alleggerisci foto": stessa foto, file più leggero, nuova versione. */
+on(
+  "POST",
+  "/locale/photo/:id/replace",
+  admin(async (c) => {
+    const id = c.params[0];
+    if (!LOCALE_PHOTO_ID.test(id)) throw new HttpError(404, "Nessuna foto");
+    if (!(await loadLocale(c.db)).foto.some((f) => f.id === id)) throw new HttpError(404, "Nessuna foto");
+    const fd = await formData(c.req);
+    const { data, type } = await readImage(fd.get("file"));
+    await c.db.putFile(`locale/${id}`, data, type);
+    const doc = await loadLocale(c.db); // riletto subito prima di salvare
+    for (const f of doc.foto) if (f.id === id) f.v = stamp(true);
     await saveLocale(c.db, doc);
     return json(publicLocale(await loadLocale(c.db)));
   }),

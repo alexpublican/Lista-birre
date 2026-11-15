@@ -27,6 +27,7 @@ import {
   UtensilsCrossed,
   Images,
   Wrench,
+  Feather,
   X,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -53,6 +54,7 @@ import {
 } from "@/lib/beers";
 import ChangePinDialog from "@/components/ChangePinDialog";
 import BackupsDialog from "@/components/BackupsDialog";
+import SlimPhotosDialog from "@/components/SlimPhotosDialog";
 import TranslateAllDialog from "@/components/TranslateAllDialog";
 import QueueDialog from "@/components/QueueDialog";
 import type { AdminBeerStats, AdminMe, Beer, BeerPatch, Location } from "@/lib/beers";
@@ -123,6 +125,7 @@ export default function AdminDashboard() {
   const [pinOpen, setPinOpen] = useState(false);
   const [pinKey, setPinKey] = useState(0);
   const [backupsOpen, setBackupsOpen] = useState(false);
+  const [slimOpen, setSlimOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [queueBeer, setQueueBeer] = useState<Beer | null>(null);
@@ -362,6 +365,7 @@ export default function AdminDashboard() {
                   }, "settings-button")}
                 {tool(<DatabaseBackup className="size-4" />, t("backups"), () => setBackupsOpen(true), "backups-button")}
                 {tool(<Languages className="size-4" />, t("translate_all"), () => setTranslateOpen(true), "translate-all-button")}
+                {tool(<Feather className="size-4" />, t("slim"), () => setSlimOpen(true), "slim-photos-button")}
                 {tool(<KeyRound className="size-4" />, t("change_pin"), () => {
                   setPinKey((k) => k + 1);
                   setPinOpen(true);
@@ -708,6 +712,7 @@ export default function AdminDashboard() {
       </main>
       <QueueDialog key={`queue-${queueKey}`} beer={queueBeer} allBeers={all} onOpenChange={(o) => !o && setQueueBeer(null)} />
       <BackupsDialog open={backupsOpen} onOpenChange={setBackupsOpen} />
+      <SlimPhotosDialog open={slimOpen} onOpenChange={setSlimOpen} />
       <TranslateAllDialog open={translateOpen} onOpenChange={setTranslateOpen} />
       <ChangePinDialog key={`pin-${pinKey}`} open={pinOpen} onOpenChange={setPinOpen} />
       {settings.data && (

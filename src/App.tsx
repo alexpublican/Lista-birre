@@ -1,17 +1,36 @@
+import { lazy, Suspense, type ComponentType } from "react";
 import { Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import PublicMenuDoors from "@/pages/PublicMenuDoors";
 import PublicMenu from "@/pages/PublicMenu";
-import AdminPin from "@/pages/AdminPin";
-import AdminDashboard from "@/pages/AdminDashboard";
-import Poster from "@/pages/Poster";
-import Unsubscribe from "@/pages/Unsubscribe";
-import TvScreen from "@/pages/TvScreen";
 import { MenuBere, MenuIngresso, MenuLocale, MenuSettore, MenuVoce } from "@/pages/MenuPublic";
-import LocaleAdmin from "@/pages/LocaleAdmin";
-import MenuAdmin from "@/pages/MenuAdmin";
 import { NavMemory } from "@/lib/nav";
 import PullToRefresh from "@/components/PullToRefresh";
+
+// Le pagine dei clienti arrivano subito; quelle di gestione, TV e poster si scaricano solo
+// quando servono, così il telefono del cliente scarica meno codice all'apertura.
+// Se nel frattempo è uscita una versione nuova del sito, il pezzo vecchio non c'è più: si ricarica la pagina.
+const page = (load: () => Promise<{ default: ComponentType }>) =>
+  lazy(() =>
+    load().catch((e: unknown) => {
+      try {
+        if (!sessionStorage.getItem("chunk-reload")) {
+          sessionStorage.setItem("chunk-reload", "1");
+          window.location.reload();
+        }
+      } catch {
+        // navigazione privata: niente ricarica automatica
+      }
+      throw e;
+    }),
+  );
+const AdminPin = page(() => import("@/pages/AdminPin"));
+const AdminDashboard = page(() => import("@/pages/AdminDashboard"));
+const MenuAdmin = page(() => import("@/pages/MenuAdmin"));
+const LocaleAdmin = page(() => import("@/pages/LocaleAdmin"));
+const Poster = page(() => import("@/pages/Poster"));
+const TvScreen = page(() => import("@/pages/TvScreen"));
+const Unsubscribe = page(() => import("@/pages/Unsubscribe"));
 
 // One <Route> per page in src/pages; BrowserRouter already wraps this in main.tsx.
 export default function App() {
@@ -19,6 +38,7 @@ export default function App() {
     <>
       <NavMemory />
       <PullToRefresh />
+      <Suspense fallback={null}>
       <Routes>
         <Route path="/" element={<MenuIngresso />} />
         <Route path="/birre" element={<PublicMenuDoors />} />
@@ -37,6 +57,7 @@ export default function App() {
         <Route path="/disiscriviti" element={<Unsubscribe />} />
         <Route path="*" element={<MenuIngresso />} />
       </Routes>
+      </Suspense>
       <Toaster richColors />
     </>
   );

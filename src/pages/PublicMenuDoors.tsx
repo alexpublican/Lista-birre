@@ -17,7 +17,7 @@ import { useI18n } from "@/lib/i18n";
 import type { TKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-const img = (id: string) => `https://images.unsplash.com/${id}?crop=entropy&cs=srgb&fm=jpg&ixlib=rb-4.1.0&q=75&w=1000`;
+const img = (id: string) => `https://images.unsplash.com/${id}?crop=entropy&cs=srgb&auto=format&ixlib=rb-4.1.0&q=75&w=1000`;
 
 const DOORS: Record<Location, { photo: string; Icon: LucideIcon; sub: TKey; ring: string; text: string; glow: string; tab: string }> = {
   spina: {

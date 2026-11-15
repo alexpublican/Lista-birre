@@ -62,7 +62,7 @@ const secTitle = (t: T, s: Sezione, lang: Lang) => (s.lavagna ? t("m_specials") 
 const cap = (x: string) => (x ? x.charAt(0).toUpperCase() + x.slice(1) : "");
 
 // Foto di sfondo delle schede (stesso stile delle porte Spina/Frigo/Cantina della Lista Birre).
-const unsplash = (id: string, w = 1000) => `https://images.unsplash.com/${id}?crop=entropy&cs=srgb&fm=jpg&ixlib=rb-4.1.0&q=75&w=${w}`;
+const unsplash = (id: string, w = 1000) => `https://images.unsplash.com/${id}?crop=entropy&cs=srgb&auto=format&ixlib=rb-4.1.0&q=75&w=${w}`;
 const PHOTO = {
   bere: unsplash("photo-1567696911980-2eed69a46042", 1400),
   birre: unsplash("photo-1546622891-02c72c1537b6", 1400),
