@@ -388,6 +388,13 @@ body.moving .fab{display:none}
   #printArea h2{font-size:13pt;margin:12pt 0 4pt}
   #printArea .pck{width:22pt}
 }
+.sughd{font-size:12.5px;font-weight:600;color:var(--acc-text);margin:2px 0 6px}
+#sug .chips{margin-bottom:10px}
+.chip.sugo{background:var(--green);color:#fff;border-color:var(--green);box-shadow:var(--glow-res)}
+.chip.sugo small{color:inherit;opacity:.85}
+.chip.sugo.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.picker .chip.sug{border:2px solid var(--green);box-shadow:var(--glow-res);position:relative}
+.picker .chip.sug::after{content:"★";position:absolute;top:-7px;right:-5px;font-size:11px;background:var(--green);color:#fff;border-radius:999px;width:16px;height:16px;line-height:16px;text-align:center}
 /* tema: rifiniture */
 h1{font-size:30px;letter-spacing:.01em}
 h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margin-top:3px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--cmd))}
@@ -485,7 +492,7 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
     <label>Arrivo<input id="fArrivo" type="time"></label>
     <label class="full">Telefono<input id="fTel" type="tel" inputmode="tel" placeholder="333 …"></label>
     <div class="full"><div class="fieldlbl">Fasce (puoi sceglierne più di una)</div><div class="chips" id="fFasce"></div></div>
-    <div class="full"><div class="fieldlbl">Tavoli (puoi unirne più di uno)</div><div class="chips" id="fTavoli"></div><div class="cap" id="cap"></div><div class="picker hidden" id="picker"></div></div>
+    <div class="full"><div class="fieldlbl">Tavoli (puoi unirne più di uno)</div><div id="sug"></div><div class="chips" id="fTavoli"></div><div class="cap" id="cap"></div><div class="picker hidden" id="picker"></div></div>
     <div class="full"><button type="button" class="chip banq" id="fBanq">🎉 Banchetto</button></div>
     <div class="full banqbox hidden" id="banqBox">
       <label>Menù<textarea id="fMenu" rows="5" placeholder="Antipasto: tagliere misto&#10;Primo: …&#10;Secondo: …&#10;Dolce: …&#10;Bevande: …"></textarea></label>
@@ -1079,6 +1086,37 @@ function capText(){
   rest.forEach(n=>{ max+=TABLES[n].max; parts.push(TABLES[n].seats); });
   return {max, text: e.tables.length>1 ? `Posti: ${parts.join(" + ")} → fino a ${max}` : `Posti: ${parts.join("")}`};
 }
+
+/* ---------- TAVOLI CONSIGLIATI ---------- */
+const minSeats = n => parseInt(TABLES[n].seats) || TABLES[n].max;
+function suggest(pax){
+  if(!pax || pax<1) return [];
+  const free = n => !isBusy(n);
+  const opts=[];
+  // tavoli singoli
+  Object.keys(TABLES).forEach(n=>{
+    const t=TABLES[n]; if(!free(n) || t.max<pax) return;
+    if(t.banco && pax>1) return;
+    opts.push({tables:[n], max:t.max, waste:t.max-pax, under: minSeats(n)>pax ? minSeats(n)-pax : 0, combo:0});
+  });
+  // tavoli che si uniscono (coppie vicine; al banco posti consecutivi)
+  JOIN.forEach(g=>{
+    if(TABLES[g[0]].banco){
+      if(pax<2 || pax>g.length) return;
+      for(let i=0;i+pax<=g.length;i++){ const sub=g.slice(i,i+pax); if(sub.every(free)) opts.push({tables:sub, max:pax, waste:0, under:0, combo:1}); }
+      return;
+    }
+    if(!g.every(free)) return;
+    const max=selSeats(g); if(max<pax) return;
+    const single=Math.max(...g.map(n=>TABLES[n].max)); if(single>=pax) return; // basta un tavolo solo
+    opts.push({tables:g, max, waste:max-pax, under:0, combo:1});
+  });
+  opts.sort((a,b)=> (a.waste+a.under*2+a.combo*1.5) - (b.waste+b.under*2+b.combo*1.5) || tkey(a.tables[0])-tkey(b.tables[0]));
+  // al massimo 6 proposte, varie fra le sale
+  const out=[], perRoom={};
+  for(const o of opts){ const rm=TABLES[o.tables[0]].room; if((perRoom[rm]||0)>=3) continue; perRoom[rm]=(perRoom[rm]||0)+1; out.push(o); if(out.length>=6) break; }
+  return out;
+}
 function renderEditor(){
   const e=state.editing;
   const first=TABLES[e.tables[0]];
@@ -1090,10 +1128,17 @@ function renderEditor(){
   $("#cap").textContent = e.tables.length ? capText().text : "";
   const pk=$("#picker");
   pk.classList.toggle("hidden",!pickerOpen);
+  const pax=+$("#fPax").value||0;
+  const need = !e.id && (pickerOpen || !e.tables.length || capText().max<pax) || (e.tables.length && capText().max<pax);
+  const sg = need ? suggest(pax) : [];
+  const sgSet=new Set(sg.flatMap(o=>o.tables));
+  $("#sug").innerHTML = sg.length ? `<div class="sughd">Consigliati per ${pax} ${pax>1?"persone":"persona"}</div><div class="chips">`+
+    sg.map((o,i)=>`<button type="button" class="chip sugo ${o.tables.join()===e.tables.join()?"on":""}" data-sg="${o.tables.join(",")}">${o.tables.map(n=>TABLES[n].label||n).join(" + ")}<small>${TABLES[o.tables[0]].roomName}, ${o.max} posti</small></button>`).join("")+`</div>`
+    : (need && pax ? `<div class="sughd">Nessun tavolo libero adatto a ${pax} persone: unisci più tavoli dall'elenco.</div>` : "");
   if(pickerOpen){
     pk.innerHTML = ROOMS.map(rm=>`<h5>${rm.name}</h5><div class="chips">`+sorted(rm.tables).map(t=>{
-      const on=e.tables.includes(t.n), busy=!on && isBusy(t.n);
-      return `<button type="button" class="chip ${on?"on":""} ${busy?"busy":""}" data-pk="${t.n}">${t.label?t.label:t.n}<small>${t.seats}p</small></button>`;
+      const on=e.tables.includes(t.n), busy=!on && isBusy(t.n), good=!on && !busy && sgSet.has(t.n);
+      return `<button type="button" class="chip ${on?"on":""} ${busy?"busy":""} ${good?"sug":""}" data-pk="${t.n}">${t.label?t.label:t.n}<small>${t.seats}p</small></button>`;
     }).join("")+`</div>`).join("");
   }
   checkWarn();
@@ -1247,9 +1292,10 @@ $("#prev").onclick=()=>shift(-7); $("#next").onclick=()=>shift(7);
 $("#today").onclick=()=>{state.date=iso(new Date()); render();};
 $("#scrim").onclick=()=>{ closeSheet(); closeClose(); $("#staffSheet").classList.remove("on"); $("#pinSheet").classList.remove("on"); }; $("#cancel").onclick=closeSheet; $("#save").onclick=save;
 $("#form").addEventListener("submit",e=>{e.preventDefault(); save();});
-$("#paxMinus").onclick=()=>{$("#fPax").value=Math.max(1,(+$("#fPax").value||1)-1); checkWarn(); banqTotal();};
-$("#paxPlus").onclick=()=>{$("#fPax").value=(+$("#fPax").value||0)+1; checkWarn(); banqTotal();};
-$("#fPax").addEventListener("input",checkWarn);
+$("#paxMinus").onclick=()=>{$("#fPax").value=Math.max(1,(+$("#fPax").value||1)-1); renderEditor(); banqTotal();};
+$("#paxPlus").onclick=()=>{$("#fPax").value=(+$("#fPax").value||0)+1; renderEditor(); banqTotal();};
+$("#fPax").addEventListener("input",()=>{ if(state.editing) renderEditor(); });
+$("#sug").addEventListener("click",ev=>{ const b=ev.target.closest("[data-sg]"); if(!b) return; state.editing.tables=b.dataset.sg.split(","); renderEditor(); });
 $("#fFasce").addEventListener("click",ev=>{
   const b=ev.target.closest("[data-f]"); if(!b) return;
   const f=+b.dataset.f, e=state.editing;
