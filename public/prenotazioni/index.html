@@ -403,6 +403,17 @@ body.moving .fab{display:none}
 .chip.sugo.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
 .picker .chip.sug{border:2px solid var(--green);box-shadow:var(--glow-res);position:relative}
 .picker .chip.sug::after{content:"★";position:absolute;top:-7px;right:-5px;font-size:11px;background:var(--green);color:#fff;border-radius:999px;width:16px;height:16px;line-height:16px;text-align:center}
+.ricinfo{background:var(--pairbg);border-radius:12px;padding:10px 12px;font-size:13.5px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.ricinfo .btn{flex:0 0 auto;padding:9px 12px;font-size:14px;background:var(--raised)}
+.ricrow{display:block;width:100%;text-align:left;padding:12px;border-top:1px solid var(--line)}
+.ricrow:first-child{border-top:0}
+.ricrow .nm{font-weight:700;font-size:16px}
+.ricrow .dt{font-size:13px;color:var(--muted);margin-top:2px}
+.ricrow .cf{font-size:12.5px;color:var(--danger);margin-top:4px;font-weight:600}
+.ricrow.off .nm{opacity:.55}
+.rfgrid h5{margin:8px 0 5px;font-size:12.5px;color:var(--muted)}
+.rfgrid .chip{padding:7px 9px;font-size:13.5px;min-width:44px;text-align:center}
+.ric-ico{font-size:.85em}
 /* tema: rifiniture */
 h1{font-size:30px;letter-spacing:.01em}
 h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margin-top:3px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--cmd))}
@@ -439,6 +450,7 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
       <button id="mTheme">☀️ Tema chiaro</button>
       <label class="mdate">📅 Vai a una data<input type="date" id="date"></label>
       <button id="mStaff" class="hidden">👥 Staff e PIN dei colleghi</button>
+      <button id="mRic">🔁 Clienti abituali</button>
       <button id="mPrint">🖨️ Stampa il servizio (copia di emergenza)</button>
       <button id="mPin">🔑 Cambia il mio PIN</button>
       <div class="mnote" id="mWho"></div>
@@ -512,6 +524,7 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
     </div>
     <label class="full">Note<textarea id="fNote" placeholder="Seggiolone, allergie, compleanno…"></textarea></label>
     <div class="warn" id="warn"></div>
+    <div class="full ricinfo hidden" id="ricInfo"></div>
     <label class="full toggle">Cliente arrivato<input type="checkbox" id="fArr"></label>
     <label class="full toggle">Comanda presa<input type="checkbox" id="fCmd"></label>
   </form>
@@ -584,6 +597,34 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
   <div class="hint">Mentre eri senza internet un collega ha modificato le stesse cose. Queste modifiche non sono state salvate: controllale e reinseriscile se serve.</div>
   <div id="failList"></div>
   <div class="actions"><button class="btn primary" id="failOk">Ho capito</button></div>
+</div>
+<div class="sheet" id="ricSheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <div id="ricList">
+    <h2>Clienti abituali</h2>
+    <div class="hint">Le loro prenotazioni si creano da sole per le prossime 8 settimane e occupano il tavolo. Puoi modificare o eliminare una singola data dalla mappa: le altre restano.</div>
+    <div id="ricItems"></div>
+    <div class="actions"><button class="btn" id="ricClose">Chiudi</button><button class="btn primary" id="ricNew">+ Nuovo abituale</button></div>
+  </div>
+  <div id="ricForm" class="hidden">
+    <h2 id="rfTitle">Nuovo cliente abituale</h2>
+    <div class="f">
+      <label class="full">Cliente<input id="rfCliente" placeholder="Nome e cognome"></label>
+      <label>Telefono<input id="rfTel" type="tel" inputmode="tel"></label>
+      <label>Persone<input id="rfPax" type="number" min="1" inputmode="numeric" value="2"></label>
+      <div class="full"><div class="fieldlbl">Giorni</div><div class="chips" id="rfGiorni"></div></div>
+      <div class="full"><div class="fieldlbl">Fasce</div><div class="chips" id="rfFasce"></div></div>
+      <label>Arrivo<input id="rfArrivo" type="time"></label>
+      <label>Tipo<select id="rfTipo"><option value="mangiano">🍽️ Mangiano</option><option value="bere">🍺 Solo bere</option></select></label>
+      <div class="full"><div class="fieldlbl">Tavoli</div><div id="rfTavoli"></div></div>
+      <label class="full">Note<input id="rfNote" placeholder="Es. tavolo fisso del giovedì, birra media"></label>
+      <label>Dal<input id="rfDal" type="date"></label>
+      <label>Fino al (facoltativo)<input id="rfAl" type="date"></label>
+      <label class="full toggle">Attiva (togli la spunta per sospenderla)<input type="checkbox" id="rfAttiva" checked></label>
+      <div class="warn" id="rfWarn"></div>
+    </div>
+    <div class="actions"><button class="btn danger hidden" id="rfDel">Elimina</button><button class="btn" id="rfBack">Indietro</button><button class="btn primary" id="rfSave">Salva</button></div>
+  </div>
 </div>
 <div id="printArea"></div>
 <div class="movebar" id="movebar"><span id="moveTxt"></span><div class="mvb"><button id="moveOk" class="hidden">Conferma</button><button id="moveCancel">Annulla</button></div></div>
@@ -903,7 +944,7 @@ function tablesHTML(room,list){
     if(state.move){ const m=state.move; if(m.multi){ mv = m.sel.includes(t.n) ? " msel" : (r && r.id===m.id) ? " mfrom" : moveOk(t.n)?" mok":" mno"; } else if(r && r.id===m.id) mv = t.n===m.from?" mfrom":" mmine"; else mv = moveOk(t.n)?" mok":" mno"; }
     return `<button class="t ${cls} ${t.botte?"botte":""} ${t.banco?"banco":""}${mv}${r&&r.banchetto?" banq":""}" data-t="${t.n}" style="left:${t.x}%;top:${t.y}%;width:${t.w}%;height:${t.h}%">
       ${r?`<span class="ord">${om[r.id]}</span>`:""}<span class="num">${t.label?esc(t.label):t.n}${r?` <span class="ico">${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]}</span>`:""}</span>
-      ${r?`<span class="who">${multi?"🔗":""}${esc(r.cliente)} · ${r.pax}</span>`
+      ${r?`<span class="who">${r.ric?"🔁":""}${multi?"🔗":""}${esc(r.cliente)} · ${r.pax}</span>`
          :`<span class="seats">${t.label?"tav. "+t.n+" · ":""}${t.seats} ${t.seats==="1"?"posto":"posti"}</span>`}
     </button>`;
   }).join("");
@@ -945,7 +986,7 @@ function renderList(){
       return `<button class="li ${stCls(r)}" data-t="${t.n}">
         <div class="badge">${t.n}<small>${t.seats}p</small></div>
         <div class="main">
-          ${r?`<div class="name">${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]} ${esc(r.cliente)}</div><div class="sub">${sub||"&nbsp;"}</div>${r.banchetto&&r.menu&&t.n===r.tables[0]?`<div class="menu-pre">${esc(r.menu)}${r.prezzo?`\n€ ${r.prezzo} a persona${r.acconto?` · acconto € ${r.acconto}`:""}`:""}</div>`:""}`
+          ${r?`<div class="name">${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]} ${esc(r.cliente)}${r.ric?' <span class="ric-ico">🔁</span>':""}</div><div class="sub">${sub||"&nbsp;"}</div>${r.banchetto&&r.menu&&t.n===r.tables[0]?`<div class="menu-pre">${esc(r.menu)}${r.prezzo?`\n€ ${r.prezzo} a persona${r.acconto?` · acconto € ${r.acconto}`:""}`:""}</div>`:""}`
              :`<div class="name empty">Libero${t.label?" · "+esc(t.label):""}</div><div class="sub">Tocca per prenotare</div>`}
         </div>
         <div class="right">${r?`<b>${r.pax} pax</b>${r.arrivo||""}${r.fasce.length>1?`<div class="link">${fasceLabel(r.fasce)}</div>`:""}`:""}</div>
@@ -1057,7 +1098,7 @@ function renderArrivals(){
         const lateMin = now-tmin(arrivalTime(r));
         return `<div class="ar ${r.arrived?"done":""} ${r.comanda?"cmdd":""} ${late?"isl":""}" data-id="${r.id}" role="button">
           <div class="on">${i}</div>
-          <div style="min-width:0"><div class="nm">${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]} ${esc(r.cliente)}</div>
+          <div style="min-width:0"><div class="nm">${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]} ${esc(r.cliente)}${r.ric?" 🔁":""}</div>
             <div class="dt">Tav. <b>${r.tables.map(tname).join(" + ")}</b>, ${r.pax} pers.${r.fasce.length>1?", "+fasceLabel(r.fasce):""}</div>
             ${r.note?`<div class="nt2">${esc(r.note)}</div>`:""}
             ${late?`<div class="late">In ritardo di ${lateMin} min</div>`:""}</div>
@@ -1078,6 +1119,96 @@ $("#arrList").addEventListener("click",e=>{
   state.fascia=r.fasce[0]; openSheet(r.tables[0]);
 });
 setInterval(()=>{ if(state.view==="arr" && !$("#sheet").classList.contains("on")) renderArrivals(); },60000);
+
+
+/* ---------- CLIENTI ABITUALI ---------- */
+const GIORNI_RIC=[["1","Lun"],["2","Mar"],["3","Mer"],["4","Gio"],["5","Ven"],["6","Sab"],["0s","Dom sera"],["0p","Dom pranzo"]];
+let RIC=[], rfData=null;
+function ricDesc(r){
+  const g=GIORNI_RIC.filter(x=>(r.giorni||[]).includes(x[0])).map(x=>x[1]).join(", ");
+  const f=(r.fasce||[]).map(id=>FASCE_ALL.find(x=>x.id===id)?.short).filter(Boolean).join("+");
+  return `${g}${f?", "+f:""}${r.arrivo?", "+r.arrivo:""}, tav. ${(r.tables||[]).map(tname).join(" + ")}, ${r.pax} pers.`;
+}
+async function openRic(){
+  $("#menu").classList.add("hidden");
+  $("#scrim").classList.add("on"); $("#ricSheet").classList.add("on");
+  ricShowList();
+}
+function closeRic(){ $("#ricSheet").classList.remove("on"); $("#scrim").classList.remove("on"); }
+async function ricShowList(){
+  $("#ricList").classList.remove("hidden"); $("#ricForm").classList.add("hidden");
+  $("#ricItems").innerHTML='<div class="hint">Carico…</div>';
+  try{ RIC=await rpc("pren_ricorrenti",{p_token:SESS.token}); }
+  catch(e){ $("#ricItems").innerHTML=`<div class="warn">${e.message==="OFFLINE"?"Serve internet per gestire i clienti abituali. Le loro prenotazioni già create restano visibili sulla mappa.":esc(errMsg(e))}</div>`; return; }
+  $("#ricItems").innerHTML = RIC.length ? `<div class="list">`+RIC.map(r=>`<button class="ricrow ${r.attiva===false?"off":""}" data-ric="${esc(r.id)}">
+      <div class="nm">🔁 ${esc(r.cliente)}${r.attiva===false?" (sospesa)":""}</div>
+      <div class="dt">${esc(ricDesc(r))}</div>
+      <div class="dt">${(r.prossime||[]).length?"Prossime: "+r.prossime.map(dIt).join(", "):"Nessuna data nelle prossime 8 settimane"}</div>
+      ${(r.conflitti||[]).length?`<div class="cf">⚠️ ${r.conflitti.length} ${r.conflitti.length>1?"date non create":"data non creata"}: tavolo già occupato (${r.conflitti.slice(0,3).map(c=>dIt(c.data)).join(", ")}${r.conflitti.length>3?"…":""})</div>`:""}
+    </button>`).join("")+`</div>`
+    : `<div class="empty-state">Nessun cliente abituale.<br>Tocca "+ Nuovo abituale", oppure apri una prenotazione e tocca "Rendi abituale".</div>`;
+}
+function ricOpenForm(r){
+  rfData = r ? JSON.parse(JSON.stringify(r)) : {id:null, giorni:[], fasce:[1], tables:[], pax:2, tipo:"mangiano", attiva:true, dal:iso(new Date())};
+  $("#ricList").classList.add("hidden"); $("#ricForm").classList.remove("hidden");
+  $("#rfTitle").textContent = rfData.id ? "Modifica cliente abituale" : "Nuovo cliente abituale";
+  $("#rfCliente").value=rfData.cliente||""; $("#rfTel").value=rfData.tel||""; $("#rfPax").value=rfData.pax||2;
+  $("#rfArrivo").value=rfData.arrivo||""; $("#rfTipo").value=rfData.tipo||"mangiano"; $("#rfNote").value=rfData.note||"";
+  $("#rfDal").value=rfData.dal||iso(new Date()); $("#rfAl").value=rfData.al||""; $("#rfAttiva").checked=rfData.attiva!==false;
+  $("#rfDel").classList.toggle("hidden",!rfData.id); $("#rfDel").textContent="Elimina"; $("#rfDel").dataset.armed="";
+  $("#rfWarn").textContent="";
+  rfRender();
+  $("#ricSheet").scrollTop=0;
+}
+function rfRender(){
+  const d=rfData;
+  $("#rfGiorni").innerHTML=GIORNI_RIC.map(([k,l])=>`<button type="button" class="chip ${d.giorni.includes(k)?"on":""}" data-g="${k}">${l}</button>`).join("");
+  const pranzo=d.giorni.includes("0p");
+  $("#rfFasce").innerHTML=FASCE_ALL.filter(f=>f.serv==="sera"||pranzo).map(f=>`<button type="button" class="chip ${d.fasce.includes(f.id)?"on":""}" data-f="${f.id}">${f.label}<small>${f.time}</small></button>`).join("");
+  $("#rfTavoli").innerHTML=`<div class="rfgrid">`+ROOMS.map(rm=>`<h5>${rm.name}</h5><div class="chips">`+sorted(rm.tables).map(t=>`<button type="button" class="chip ${d.tables.includes(t.n)?"on":""}" data-t="${t.n}">${t.label||t.n}<small>${t.seats}p</small></button>`).join("")+`</div>`).join("")+`</div>`;
+}
+$("#rfGiorni").addEventListener("click",e=>{ const b=e.target.closest("[data-g]"); if(!b) return; const k=b.dataset.g; rfData.giorni=rfData.giorni.includes(k)?rfData.giorni.filter(x=>x!==k):[...rfData.giorni,k]; if(k==="0p"&&rfData.giorni.includes("0p")&&!rfData.fasce.some(f=>f>=10)) rfData.fasce.push(11); if(!rfData.giorni.includes("0p")) rfData.fasce=rfData.fasce.filter(f=>f<10); rfRender(); });
+$("#rfFasce").addEventListener("click",e=>{ const b=e.target.closest("[data-f]"); if(!b) return; const f=+b.dataset.f; rfData.fasce=rfData.fasce.includes(f)?rfData.fasce.filter(x=>x!==f):[...rfData.fasce,f].sort((a,b)=>a-b); rfRender(); });
+$("#rfTavoli").addEventListener("click",e=>{ const b=e.target.closest("[data-t]"); if(!b) return; const n=b.dataset.t; rfData.tables=rfData.tables.includes(n)?rfData.tables.filter(x=>x!==n):[...rfData.tables,n].sort((a,b)=>tkey(a)-tkey(b)); rfRender(); });
+$("#ricItems").addEventListener("click",e=>{ const b=e.target.closest("[data-ric]"); if(b) ricOpenForm(RIC.find(r=>r.id===b.dataset.ric)); });
+$("#ricNew").onclick=()=>ricOpenForm(null);
+$("#ricClose").onclick=closeRic;
+$("#rfBack").onclick=ricShowList;
+$("#rfSave").onclick=async()=>{
+  const d=rfData;
+  d.cliente=$("#rfCliente").value.trim(); d.tel=$("#rfTel").value.trim(); d.pax=Math.max(1,+$("#rfPax").value||1);
+  d.arrivo=$("#rfArrivo").value; d.tipo=$("#rfTipo").value; d.note=$("#rfNote").value.trim();
+  d.dal=$("#rfDal").value||iso(new Date()); d.al=$("#rfAl").value||null; d.attiva=$("#rfAttiva").checked;
+  if(!d.cliente){ $("#rfWarn").textContent="Inserisci il nome del cliente."; return; }
+  if(!d.giorni.length){ $("#rfWarn").textContent="Scegli almeno un giorno."; return; }
+  if(!d.tables.length){ $("#rfWarn").textContent="Scegli almeno un tavolo."; return; }
+  if(!d.fasce.some(f=>f<10) && d.giorni.some(g=>g!=="0p")) d.fasce=[1,...d.fasce];
+  if(!d.id) d.id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  $("#rfSave").disabled=true;
+  try{ await rpc("pren_ricorrente_salva",{p_token:SESS.token,p_dati:d}); await loadData(true); render(); toast(`${d.cliente}: prenotazioni create`); ricShowList(); }
+  catch(e){ $("#rfWarn").textContent = e.message==="OFFLINE" ? "Serve internet per salvare." : errMsg(e); }
+  $("#rfSave").disabled=false;
+};
+$("#rfDel").onclick=async()=>{
+  const b=$("#rfDel");
+  if(b.dataset.armed!=="1"){ b.dataset.armed="1"; b.textContent="Conferma: elimina e libera le date future"; return; }
+  try{ await rpc("pren_ricorrente_elimina",{p_token:SESS.token,p_id:rfData.id}); await loadData(true); render(); toast("Cliente abituale eliminato"); ricShowList(); }
+  catch(e){ $("#rfWarn").textContent = e.message==="OFFLINE" ? "Serve internet per eliminare." : errMsg(e); }
+};
+$("#mRic").onclick=openRic;
+// dalla prenotazione: "Rendi abituale" / "Gestisci"
+function ricFromReservation(r){
+  const dw=pd(r.date).getDay();
+  const g = dw===0 ? (r.fasce.some(f=>f>=10)?"0p":"0s") : String(dw);
+  return {id:null, cliente:r.cliente, tel:r.tel||"", pax:r.pax, tipo:r.tipo||"mangiano", note:r.note||"", arrivo:r.arrivo||"", tables:[...r.tables], fasce:[...r.fasce], giorni:[g], attiva:true, dal:r.date};
+}
+$("#ricInfo").addEventListener("click",async e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  const cur=state.editing; closeSheet();
+  $("#scrim").classList.add("on"); $("#ricSheet").classList.add("on");
+  if(b.dataset.act==="new"){ ricOpenForm(ricFromReservation(cur)); }
+  else { try{ RIC=await rpc("pren_ricorrenti",{p_token:SESS.token}); const r=RIC.find(x=>x.id===cur.ric); if(r) ricOpenForm(r); else ricShowList(); }catch(err){ ricShowList(); } }
+});
 
 /* ---------- EDITOR ---------- */
 let delArmed=false, pickerOpen=false;
@@ -1176,6 +1307,10 @@ function openSheet(tableN, opts={}){
   $("#fMenu").value=r?.menu||""; $("#fPrezzo").value=r?.prezzo||""; $("#fAcconto").value=r?.acconto||"";
   setBanq(!!r?.banchetto || !!opts.banq);
   $("#del").classList.toggle("hidden",!r);
+  const ri=$("#ricInfo");
+  if(r && r.ric){ ri.innerHTML=`<span>🔁 Cliente abituale. Le modifiche qui valgono solo per questa data.</span><button type="button" class="btn" data-act="edit">Gestisci</button>`; ri.classList.remove("hidden"); }
+  else if(r){ ri.innerHTML=`<span>Torna spesso?</span><button type="button" class="btn" data-act="new">🔁 Rendi abituale</button>`; ri.classList.remove("hidden"); }
+  else ri.classList.add("hidden");
   $("#move").classList.toggle("hidden",!r);
   $("#del").textContent="Elimina";
   renderEditor();
@@ -1213,6 +1348,7 @@ function save(){
     note: $("#fNote").value.trim(), arrived: $("#fArr").checked || $("#fCmd").checked, comanda: $("#fCmd").checked,
     updated: new Date().toISOString()
   };
+  if(r.ric) r.ricMod=true;
   store.save(r); closeSheet(); render(); toast(ONLINE?"Prenotazione salvata":"Salvata sul telefono: partirà appena torna internet");
 }
 
@@ -1262,14 +1398,14 @@ function doMove(n){
   if(n===m.from){ cancelMove(); return; }
   if(r.tables.includes(n)){ toast("Il tavolo fa già parte della prenotazione"); return; }
   if(!moveOk(n)){ toast(`Tavolo ${tname(n)} occupato in questa fascia`); return; }
-  r.tables = r.tables.map(t=>t===m.from?n:t);
+  r.tables = r.tables.map(t=>t===m.from?n:t); if(r.ric) r.ricMod=true;
   r.updated=new Date().toISOString();
   store.save(r); state.move=null; renderMoveBar(); render();
   toast(`${r.cliente} spostato sul tavolo ${tname(n)}`);
 }
 function confirmMove(){
   const m=state.move, r=moveRes(); if(!r||!m.sel.length) return;
-  r.tables=[...m.sel]; r.updated=new Date().toISOString();
+  r.tables=[...m.sel]; r.updated=new Date().toISOString(); if(r.ric) r.ricMod=true;
   store.save(r); state.move=null; renderMoveBar(); render();
   toast(`${r.cliente} spostato su ${r.tables.map(tname).join(" + ")}`);
   if(r.pax>selSeats(r.tables)) setTimeout(()=>toast(`Attenzione: ${r.pax} persone, posti fino a ${selSeats(r.tables)}`),2000);
@@ -1306,7 +1442,7 @@ $("#date").addEventListener("change",e=>{ if(e.target.value){state.date=e.target
 const shift=n=>{const [y,m,d]=state.date.split("-").map(Number); state.date=iso(new Date(y,m-1,d+n)); render();};
 $("#prev").onclick=()=>shift(-7); $("#next").onclick=()=>shift(7);
 $("#today").onclick=()=>{state.date=iso(new Date()); render();};
-$("#scrim").onclick=()=>{ closeSheet(); closeClose(); $("#staffSheet").classList.remove("on"); $("#pinSheet").classList.remove("on"); }; $("#cancel").onclick=closeSheet; $("#save").onclick=save;
+$("#scrim").onclick=()=>{ closeSheet(); closeClose(); $("#staffSheet").classList.remove("on"); $("#pinSheet").classList.remove("on"); $("#ricSheet").classList.remove("on"); }; $("#cancel").onclick=closeSheet; $("#save").onclick=save;
 $("#form").addEventListener("submit",e=>{e.preventDefault(); save();});
 $("#paxMinus").onclick=()=>{$("#fPax").value=Math.max(1,(+$("#fPax").value||1)-1); renderEditor(); banqTotal();};
 $("#paxPlus").onclick=()=>{$("#fPax").value=(+$("#fPax").value||0)+1; renderEditor(); banqTotal();};
