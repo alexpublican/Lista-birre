@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import { Printer } from "lucide-react";
+import { Download, Loader2, Printer } from "lucide-react";
 import BrandMark from "@/components/BrandMark";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import VenueInfo from "@/components/VenueInfo";
 import TableSticker from "@/components/TableSticker";
 import { cn } from "@/lib/utils";
+import PrintHelp from "@/components/PrintHelp";
+import { downloadSvgAsPng, tryPrint } from "@/lib/print";
 
 const SCAN_LINES = [
   "Inquadra e scopri le birre di oggi",
@@ -34,7 +36,7 @@ const STICKER_CSS = `
 const SIZES = [8, 9, 10, 12] as const;
 
 /** Barra in alto: torna alla gestione, scegli poster o adesivo, stampa. */
-function Toolbar({ mode, onMode }: { mode: "poster" | "adesivo"; onMode: (m: "poster" | "adesivo") => void }) {
+function Toolbar({ mode, onMode, onPrint }: { mode: "poster" | "adesivo"; onMode: (m: "poster" | "adesivo") => void; onPrint: () => void }) {
   const { t } = useI18n();
   const tab = (m: "poster" | "adesivo", label: string) => (
     <button
@@ -58,15 +60,38 @@ function Toolbar({ mode, onMode }: { mode: "poster" | "adesivo"; onMode: (m: "po
         {tab("poster", t("poster_a4"))}
         {tab("adesivo", t("table_sticker"))}
       </div>
-      <Button onClick={() => window.print()} data-testid="poster-print-button">
+      <Button onClick={onPrint} data-testid="poster-print-button">
         <Printer className="size-4" /> {t("print")}
       </Button>
     </div>
   );
 }
 
+/** Pulsante "Scarica immagine": l'adesivo come PNG ad alta risoluzione (per stampare o per la tipografia). */
+function DownloadSticker({ cm }: { cm: number }) {
+  const [busy, setBusy] = useState(false);
+  const go = async () => {
+    const svg = document.querySelector<SVGSVGElement>('[data-testid="table-sticker"]');
+    if (!svg) return;
+    setBusy(true);
+    try {
+      // 300 dpi: 118 px per cm
+      await downloadSvgAsPng(svg, Math.round(cm * 118), `adesivo-tavolo-${cm}cm.png`);
+    } catch {
+      window.alert("Non sono riuscito a creare l'immagine su questo dispositivo. Prova dal computer.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Button variant="outline" onClick={go} disabled={busy} data-testid="sticker-download">
+      {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />} Scarica immagine
+    </Button>
+  );
+}
+
 /** Foglio A4 di adesivi tondi da centro tavolo (o uno solo, per la tipografia). */
-function StickerSheet({ url }: { url: string }) {
+function StickerSheet({ url, blocked, onCloseHelp }: { url: string; blocked: boolean; onCloseHelp: () => void }) {
   const [cm, setCm] = useState<number>(9);
   const [single, setSingle] = useState(false);
   // area utile A4 con margini di 10 mm: 190 × 277 mm, 4 mm tra un adesivo e l'altro
@@ -78,6 +103,13 @@ function StickerSheet({ url }: { url: string }) {
   return (
     <>
       <style>{STICKER_CSS}</style>
+      {blocked && (
+        <div className="px-4">
+          <PrintHelp onClose={onCloseHelp}>
+            <DownloadSticker cm={cm} />
+          </PrintHelp>
+        </div>
+      )}
       <div className="mx-auto max-w-[210mm] px-4 pb-4 text-sm text-[#E7D9CC] print:hidden">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <span className="flex items-center gap-2">
@@ -101,6 +133,7 @@ function StickerSheet({ url }: { url: string }) {
             <input type="checkbox" checked={single} onChange={(e) => setSingle(e.target.checked)} data-testid="sticker-single" />
             Uno solo (per la tipografia)
           </label>
+          <DownloadSticker cm={cm} />
         </div>
         <p className="mt-2 text-xs text-[#BFB0A3]">
           {single
@@ -132,12 +165,14 @@ export default function Poster() {
   const [params, setParams] = useSearchParams();
   const mode = params.get("tipo") === "adesivo" ? "adesivo" : "poster";
   const setMode = (m: "poster" | "adesivo") => setParams(m === "adesivo" ? { tipo: "adesivo" } : {}, { replace: true });
+  const [blocked, setBlocked] = useState(false);
+  const onPrint = () => setBlocked(!tryPrint());
 
   if (mode === "adesivo")
     return (
       <div className="min-h-screen bg-[#12100E] print:bg-white">
-        <Toolbar mode={mode} onMode={setMode} />
-        <StickerSheet url={menuUrl} />
+        <Toolbar mode={mode} onMode={setMode} onPrint={onPrint} />
+        <StickerSheet url={menuUrl} blocked={blocked} onCloseHelp={() => setBlocked(false)} />
         <div className="h-10 print:hidden" />
       </div>
     );
@@ -145,7 +180,12 @@ export default function Poster() {
   return (
     <div className="min-h-screen bg-[#12100E] print:bg-[#F5EBE1]">
       <style>{PRINT_CSS}</style>
-      <Toolbar mode={mode} onMode={setMode} />
+      <Toolbar mode={mode} onMode={setMode} onPrint={onPrint} />
+      {blocked && (
+        <div className="px-4">
+          <PrintHelp onClose={() => setBlocked(false)} />
+        </div>
+      )}
 
       <div
         className="mx-auto flex aspect-[210/297] w-full max-w-[210mm] flex-col items-center justify-between bg-[#F5EBE1] px-[10%] py-[9%] text-[#1C1713] shadow-2xl print:max-w-none print:shadow-none"

@@ -5,6 +5,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { byBrewery, byTap, isGravity, useBeers, useSettings, type Beer, type Location } from "@/lib/beers";
 import { ALLERGENI, SET, SETTORI, allergeniOf, eur, hasSizes, useMenu, type Voce } from "@/lib/menu";
 import { useI18n } from "@/lib/i18n";
+import PrintHelp from "@/components/PrintHelp";
+import { tryPrint } from "@/lib/print";
 
 // Menù di riserva su carta: tutte le birre disponibili e il menù di cucina e bar, in italiano,
 // da stampare (o salvare in PDF) e tenere al banco per quando internet non c'è.
@@ -110,6 +112,7 @@ export default function MenuStampa() {
   const settings = useSettings();
   const [conBirre, setConBirre] = useState(true);
   const [conMenu, setConMenu] = useState(true);
+  const [blocked, setBlocked] = useState(false);
 
   const live = (beers.data ?? []).filter((b) => !b.archiviata && !b.in_arrivo && b.disponibile);
   const m = menu.data;
@@ -131,7 +134,7 @@ export default function MenuStampa() {
           <label className="flex items-center gap-1.5">
             <input type="checkbox" checked={conMenu} onChange={(e) => setConMenu(e.target.checked)} /> Cucina e bar
           </label>
-          <Button onClick={() => window.print()} disabled={loading} data-testid="stampa-print-button">
+          <Button onClick={() => setBlocked(!tryPrint())} disabled={loading} data-testid="stampa-print-button">
             <Printer className="size-4" /> {t("print")}
           </Button>
         </div>
@@ -140,6 +143,11 @@ export default function MenuStampa() {
           Ristampalo quando cambiano le birre.
         </p>
       </div>
+      {blocked && (
+        <div className="px-4">
+          <PrintHelp onClose={() => setBlocked(false)} />
+        </div>
+      )}
 
       <div className="stampa mx-auto max-w-[210mm] bg-white px-[11mm] py-[12mm] shadow-2xl print:max-w-none print:p-0 print:shadow-none" data-testid="stampa-sheet">
         <header className="blk" style={{ textAlign: "center", marginBottom: "6mm" }}>
