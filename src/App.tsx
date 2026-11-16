@@ -6,6 +6,7 @@ import PublicMenu from "@/pages/PublicMenu";
 import { MenuBere, MenuIngresso, MenuLocale, MenuSettore, MenuVoce } from "@/pages/MenuPublic";
 import { NavMemory } from "@/lib/nav";
 import PullToRefresh from "@/components/PullToRefresh";
+import OfflineBanner from "@/components/OfflineBanner";
 
 // Le pagine dei clienti arrivano subito; quelle di gestione, TV e poster si scaricano solo
 // quando servono, così il telefono del cliente scarica meno codice all'apertura.
@@ -29,6 +30,7 @@ const AdminDashboard = page(() => import("@/pages/AdminDashboard"));
 const MenuAdmin = page(() => import("@/pages/MenuAdmin"));
 const LocaleAdmin = page(() => import("@/pages/LocaleAdmin"));
 const Poster = page(() => import("@/pages/Poster"));
+const MenuStampa = page(() => import("@/pages/MenuStampa"));
 const TvScreen = page(() => import("@/pages/TvScreen"));
 const Unsubscribe = page(() => import("@/pages/Unsubscribe"));
 
@@ -53,11 +55,13 @@ export default function App() {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/prova" element={<PublicMenuDoors />} />
         <Route path="/poster" element={<Poster />} />
+        <Route path="/stampa" element={<MenuStampa />} />
         <Route path="/tv" element={<TvScreen />} />
         <Route path="/disiscriviti" element={<Unsubscribe />} />
         <Route path="*" element={<MenuIngresso />} />
       </Routes>
       </Suspense>
+      <OfflineBanner />
       <Toaster richColors />
     </>
   );

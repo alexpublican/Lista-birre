@@ -56,4 +56,10 @@ export function clearSaved(): void {
   } catch {
     // niente da fare
   }
+  // anche la copia offline (public/sw.js)
+  try {
+    navigator.serviceWorker?.controller?.postMessage({ type: "clear-data" });
+  } catch {
+    // niente copia offline: niente da cancellare
+  }
 }

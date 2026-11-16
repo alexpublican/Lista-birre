@@ -16,6 +16,7 @@ import {
   LogOut,
   Percent,
   Plus,
+  FileText,
   QrCode,
   RefreshCw,
   RotateCcw,
@@ -372,6 +373,7 @@ export default function AdminDashboard() {
                 }, "change-pin-button")}
                 {toolLink(<Tv className="size-4" />, t("tv_screen"), "/tv", "tv-link", true)}
                 {toolLink(<QrCode className="size-4" />, t("poster"), "/poster", "poster-link")}
+                {toolLink(<FileText className="size-4" />, t("backup_menu"), "/stampa", "backup-menu-link")}
               </PopoverContent>
             </Popover>
             <Link to="/admin/menu" className={buttonVariants({ variant: "outline" })} data-testid="food-menu-link">
