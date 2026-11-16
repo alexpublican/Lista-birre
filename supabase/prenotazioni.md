@@ -20,3 +20,11 @@ L'app passa solo dalle funzioni `public.pren_*` (security definer), che controll
 
 Le migrazioni applicate sono `prenotazioni_schema`, `prenotazioni_fix_login`, `prenotazioni_login_no_rollback`
 (Supabase → Database → Migrations). Questi dati non sono compresi nei backup notturni della lista birre.
+
+## Funzionamento senza internet
+
+- `public/prenotazioni/sw.js` salva una copia della pagina: si apre anche senza rete (dopo la prima visita).
+- La pagina tiene sul telefono l'ultima copia delle prenotazioni (`localStorage`: `pren_cache`) e una coda
+  delle modifiche fatte offline (`pren_outbox`), che parte da sola al ritorno della rete. Se nel frattempo
+  un collega ha occupato lo stesso tavolo, la modifica viene scartata e mostrata in "Modifiche non salvate".
+- Menu ⋯ → "Stampa il servizio": copia di emergenza su carta della giornata.

@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Prenotazioni">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="/favicon.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Prenotazioni tavoli</title>
@@ -369,6 +370,24 @@ body.moving .fab{display:none}
 .lbox .btn{margin-top:4px}
 .offline{font-size:12px;font-weight:700;color:#fff;background:var(--danger);border-radius:999px;padding:3px 9px;margin-left:8px;align-self:center}
 .top{flex-wrap:wrap}
+.netbar{border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:13.5px;line-height:1.35}
+.netbar b{font-weight:700}
+.netbar.off{background:var(--dangerbg);color:var(--dangertext)}
+.netbar.off b:first-child{display:block;font-size:14.5px}
+.netbar.wait{background:var(--hot);color:var(--ink)}
+#printArea{display:none}
+@media print{
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block!important;color:#000;background:#fff;font-family:Barlow,Arial,sans-serif;padding:0}
+  html,body{background:#fff!important}
+  #printArea h1{font-size:20pt;margin:0 0 2pt} #printArea h1::after{display:none}
+  #printArea .pm{font-size:9.5pt;margin-bottom:8pt;color:#333}
+  #printArea table{width:100%;border-collapse:collapse;font-size:10.5pt}
+  #printArea th,#printArea td{border:1px solid #888;padding:4pt 5pt;text-align:left;vertical-align:top}
+  #printArea th{background:#eee}
+  #printArea h2{font-size:13pt;margin:12pt 0 4pt}
+  #printArea .pck{width:22pt}
+}
 /* tema: rifiniture */
 h1{font-size:30px;letter-spacing:.01em}
 h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margin-top:3px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--cmd))}
@@ -395,7 +414,7 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
 <body>
 <div class="wrap">
   <header class="top">
-    <h1>Prenotazioni</h1><span id="offline" class="offline hidden">Senza connessione</span>
+    <h1>Prenotazioni</h1>
     <div class="topact">
       <button class="iconbtn banqbtn" id="newBanq" aria-label="Nuovo banchetto">🎉<span>Banchetto</span></button>
       <button class="iconbtn" id="menuBtn" aria-label="Altre azioni">⋯</button>
@@ -405,6 +424,7 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
       <button id="mTheme">☀️ Tema chiaro</button>
       <label class="mdate">📅 Vai a una data<input type="date" id="date"></label>
       <button id="mStaff" class="hidden">👥 Staff e PIN dei colleghi</button>
+      <button id="mPrint">🖨️ Stampa il servizio (copia di emergenza)</button>
       <button id="mPin">🔑 Cambia il mio PIN</button>
       <div class="mnote" id="mWho"></div>
       <button id="mLogout">Esci</button>
@@ -417,6 +437,7 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
     <button id="next" aria-label="Settimana successiva">›</button>
     <button id="today" class="today">Oggi</button>
   </div>
+  <div class="netbar hidden" id="netbar"></div>
   <div class="days" id="days"></div>
 
   <div class="seg" id="fasce"></div>
@@ -542,6 +563,14 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
   </div>
   <div class="actions"><button class="btn" id="pClose">Annulla</button><button class="btn primary" id="pSave">Salva</button></div>
 </div>
+<div class="sheet" id="failSheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2>Modifiche non salvate</h2>
+  <div class="hint">Mentre eri senza internet un collega ha modificato le stesse cose. Queste modifiche non sono state salvate: controllale e reinseriscile se serve.</div>
+  <div id="failList"></div>
+  <div class="actions"><button class="btn primary" id="failOk">Ho capito</button></div>
+</div>
+<div id="printArea"></div>
 <div class="movebar" id="movebar"><span id="moveTxt"></span><div class="mvb"><button id="moveOk" class="hidden">Conferma</button><button id="moveCancel">Annulla</button></div></div>
 <div class="sheet" id="clSheet" role="dialog" aria-modal="true">
   <div class="grab"></div>
@@ -664,33 +693,108 @@ async function rpc(fn,args={}){
   }
   return data;
 }
-function setOnline(v){ if(ONLINE===v) return; ONLINE=v; const el=document.getElementById("offline"); if(el) el.classList.toggle("hidden",v); }
+function setOnline(v){ if(ONLINE===v) return; ONLINE=v; renderNet(); }
 function normalize(r){
   if(!r.tables) r.tables = r.table ? [r.table] : [];
   if(!r.fasce) r.fasce = r.fascia ? [r.fascia] : [];
   delete r.table; delete r.fascia; return r;
 }
 const addDays=(d,n)=>{ const [y,m,dd]=d.split("-").map(Number); return iso(new Date(y,m-1,dd+n)); };
+
+/* ---------- MODALITÀ OFFLINE ----------
+   - copia locale dei dati: la pagina si apre e mostra l'ultimo stato anche senza internet
+   - coda delle modifiche: chi lavora offline continua a prenotare; si invia tutto al ritorno della rete */
+let OUTBOX=[], LASTSYNC=null, FLUSHING=false, FAILED=[];
+try{ OUTBOX=JSON.parse(localStorage.getItem("pren_outbox")||"[]"); }catch(e){}
+function persistLocal(){
+  try{
+    localStorage.setItem("pren_cache",JSON.stringify({CACHE,CHIUSURE,VER,RANGE,LASTSYNC}));
+    localStorage.setItem("pren_outbox",JSON.stringify(OUTBOX));
+  }catch(e){}
+}
+function restoreLocal(){
+  try{ const c=JSON.parse(localStorage.getItem("pren_cache")||"null"); if(c){ CACHE=(c.CACHE||[]).map(normalize); CHIUSURE=c.CHIUSURE||CHIUSURE; VER=c.VER??-1; RANGE=c.RANGE||null; LASTSYNC=c.LASTSYNC||null; } }catch(e){}
+}
+function applyOp(op){
+  if(op.op==="save"){ const i=CACHE.findIndex(x=>x.id===op.data.id); if(i>=0) CACHE[i]=op.data; else CACHE.push(op.data); }
+  else if(op.op==="del"){ CACHE=CACHE.filter(x=>x.id!==op.id); }
+  else if(op.op==="chiusure"){ CHIUSURE=op.data; }
+}
+function queue(op){
+  // una sola operazione in coda per prenotazione (vale l'ultima)
+  if(op.op==="save"||op.op==="del") OUTBOX=OUTBOX.filter(o=>!((o.op==="save"&&o.data.id===(op.id||op.data.id))||(o.op==="del"&&o.id===(op.id||op.data.id))));
+  if(op.op==="chiusure") OUTBOX=OUTBOX.filter(o=>o.op!=="chiusure");
+  OUTBOX.push({...op, ts:Date.now(), by:SESS?.nome});
+  applyOp(op); persistLocal(); renderNet(); flush();
+}
+async function flush(){
+  if(FLUSHING || !SESS || !OUTBOX.length) return;
+  FLUSHING=true; renderNet();
+  let sent=0;
+  while(OUTBOX.length){
+    const op=OUTBOX[0];
+    try{
+      if(op.op==="save") await rpc("pren_salva",{p_token:SESS.token,p_dati:op.data});
+      else if(op.op==="del") await rpc("pren_elimina",{p_token:SESS.token,p_id:op.id});
+      else if(op.op==="chiusure") await rpc("pren_salva_chiusure",{p_token:SESS.token,p_valore:op.data});
+      OUTBOX.shift(); sent++; persistLocal();
+    }catch(e){
+      if(e.message==="OFFLINE" || e.message==="SESSIONE_SCADUTA") break;
+      // rifiutata dal server (es. tavolo già preso da un collega): la tolgo e la segnalo
+      FAILED.push({op, motivo:errMsg(e)}); OUTBOX.shift(); persistLocal();
+    }
+  }
+  FLUSHING=false;
+  if(!OUTBOX.length){ try{ await loadData(true); }catch(e){} render(); }
+  renderNet();
+  if(sent && ONLINE && !FAILED.length) toast(sent>1?`${sent} modifiche inviate`:"Modifica inviata");
+  if(FAILED.length) showFailed();
+}
 async function loadData(force){
   if(!SESS) return;
   const today=iso(new Date());
   const want={dal: addDays(state.date<today?state.date:today,-120), al: addDays(state.date>today?state.date:today,400)};
   if(RANGE && !force && want.dal>=RANGE.dal && want.al<=RANGE.al) return;
-  RANGE = RANGE ? {dal: want.dal<RANGE.dal?want.dal:RANGE.dal, al: want.al>RANGE.al?want.al:RANGE.al} : want;
-  const d=await rpc("pren_carica",{p_token:SESS.token,p_dal:RANGE.dal,p_al:RANGE.al});
-  CACHE=(d.prenotazioni||[]).map(normalize); VER=d.versione; CHIUSURE=d.chiusure||CHIUSURE;
+  const range = RANGE ? {dal: want.dal<RANGE.dal?want.dal:RANGE.dal, al: want.al>RANGE.al?want.al:RANGE.al} : want;
+  const d=await rpc("pren_carica",{p_token:SESS.token,p_dal:range.dal,p_al:range.al});
+  RANGE=range; CACHE=(d.prenotazioni||[]).map(normalize); VER=d.versione; CHIUSURE=d.chiusure||CHIUSURE;
+  OUTBOX.forEach(applyOp); // le modifiche non ancora inviate restano visibili
+  LASTSYNC=Date.now(); persistLocal(); renderNet();
 }
 async function syncCheck(){
   if(!SESS || document.hidden) return;
+  if(OUTBOX.length){ await flush(); return; }
   try{
     const v=await rpc("pren_versione",{p_token:SESS.token});
+    LASTSYNC=Date.now();
     if(v!==VER){ await loadData(true); render(); if(rbOpen&&rbUnlocked) rbLoad().then(rbRender); }
+    else { persistLocal(); renderNet(); }
   }catch(e){}
+}
+function hhmm(t){ if(!t) return "mai"; const d=new Date(t); const same=iso(d)===iso(new Date()); return (same?"":d.toLocaleDateString("it-IT",{day:"numeric",month:"short"})+" ")+`${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function renderNet(){
+  const el=document.getElementById("netbar"); if(!el) return;
+  const n=OUTBOX.length;
+  if(!ONLINE){
+    el.className="netbar off";
+    el.innerHTML=`<b>Senza internet</b> Stai vedendo i dati aggiornati alle ${hhmm(LASTSYNC)}. Puoi continuare a lavorare${n?`: <b>${n} ${n>1?"modifiche":"modifica"} in attesa</b>, partiranno da sole`:": le modifiche partiranno da sole"}.`;
+  } else if(n){
+    el.className="netbar wait"; el.innerHTML=`Invio di ${n} ${n>1?"modifiche":"modifica"} in corso…`;
+  } else { el.className="netbar hidden"; el.innerHTML=""; }
+  const o=document.getElementById("offline"); if(o) o.classList.toggle("hidden",ONLINE);
+}
+function showFailed(){
+  const f=FAILED.splice(0);
+  $("#failList").innerHTML=f.map(x=>{
+    const r=x.op.data||{}; const what = x.op.op==="save" ? `${esc(r.cliente||"")} · ${dIt(r.date)} · tav. ${(r.tables||[]).map(tname).join(" + ")}` : x.op.op==="del" ? "Eliminazione di una prenotazione" : "Chiusura del giorno";
+    return `<div class="hist"><b>${what}</b><br><small>${esc(x.motivo)}${x.op.by?` (inserita da ${esc(x.op.by)})`:""}</small></div>`;
+  }).join("");
+  $("#scrim").classList.add("on"); $("#failSheet").classList.add("on");
 }
 function errMsg(e){
   const m=e.message||"";
-  if(m==="OFFLINE") return "Connessione assente: modifica non salvata";
-  if(m.startsWith("OCCUPATO:")) return `Tavolo appena occupato da ${m.slice(9)}`;
+  if(m==="OFFLINE") return "Connessione assente";
+  if(m.startsWith("OCCUPATO:")) return `Tavolo già occupato da ${m.slice(9)}`;
   if(m==="SESSIONE_SCADUTA") return "Sessione scaduta: rientra";
   if(m==="SOLO_ADMIN") return "Solo l'amministratore può farlo";
   return "Errore: "+m;
@@ -698,20 +802,13 @@ function errMsg(e){
 const store={
   all(){ return CACHE; },
   byDay(date){ return CACHE.filter(r=>r.date===date); },
-  save(r){
-    const i=CACHE.findIndex(x=>x.id===r.id); const prev=i>=0?CACHE[i]:null;
-    if(i>=0) CACHE[i]=r; else CACHE.push(r);
-    rpc("pren_salva",{p_token:SESS.token,p_dati:r}).then(()=>{ VER=-2; syncCheck(); })
-      .catch(e=>{ if(prev) CACHE[CACHE.findIndex(x=>x.id===r.id)]=prev; else CACHE=CACHE.filter(x=>x.id!==r.id); render(); toast(errMsg(e)); });
-  },
-  remove(id){
-    const prev=CACHE.find(x=>x.id===id); CACHE=CACHE.filter(r=>r.id!==id);
-    rpc("pren_elimina",{p_token:SESS.token,p_id:id}).then(()=>{ VER=-2; syncCheck(); })
-      .catch(e=>{ if(prev) CACHE.push(prev); render(); toast(errMsg(e)); });
-  }
+  save(r){ queue({op:"save", data:r}); },
+  remove(id){ queue({op:"del", id}); }
 };
 setInterval(syncCheck,8000);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) syncCheck(); });
+window.addEventListener("online",()=>{ setOnline(true); syncCheck(); });
+window.addEventListener("offline",()=>setOnline(false));
 
 /* ---------- STATO ---------- */
 const $=s=>document.querySelector(s);
@@ -738,7 +835,7 @@ function syncServ(){
 /* ---------- CHIUSURE ---------- */
 const CL_KEY="chiusure_v1";
 function clData(){ const c=JSON.parse(JSON.stringify(CHIUSURE||{})); return {dates:c.dates||{}, weekly:c.weekly||{}, open:c.open||{}}; }
-function clSave(c){ const prev=CHIUSURE; CHIUSURE=c; rpc("pren_salva_chiusure",{p_token:SESS.token,p_valore:c}).catch(e=>{ CHIUSURE=prev; render(); toast(errMsg(e)); }); }
+function clSave(c){ queue({op:"chiusure", data:c}); }
 function closedInfo(date,serv){
   const c=clData(), k=date+"|"+serv;
   if(c.dates[k]) return {motivo:c.dates[k], fixed:false};
@@ -851,7 +948,7 @@ function renderList(){
   $("#list").innerHTML = html || `<div class="demo" style="background:var(--panel);border-color:var(--line)">Nessun risultato.</div>`;
 }
 function render(){
-  if(SESS && RANGE && (state.date<RANGE.dal || state.date>RANGE.al)){ loadData().then(render).catch(e=>toast(errMsg(e))); }
+  if(SESS && RANGE && ONLINE && (state.date<RANGE.dal || state.date>RANGE.al)){ loadData().then(render).catch(()=>{}); }
   $("#date").value=state.date;
   syncServ();
   renderWeekStrip(); renderFasce(); renderClosed(); renderStats(); renderRooms();
@@ -1055,7 +1152,7 @@ function save(){
     note: $("#fNote").value.trim(), arrived: $("#fArr").checked || $("#fCmd").checked, comanda: $("#fCmd").checked,
     updated: new Date().toISOString()
   };
-  store.save(r); closeSheet(); render(); toast("Prenotazione salvata");
+  store.save(r); closeSheet(); render(); toast(ONLINE?"Prenotazione salvata":"Salvata sul telefono: partirà appena torna internet");
 }
 
 /* ---------- SPOSTA ---------- */
@@ -1362,12 +1459,12 @@ let theme="dark"; try{ theme=localStorage.getItem("prenotazioni_theme")||"dark";
 applyTheme(theme);
 $("#mTheme").onclick=()=>{ theme = theme==="light"?"dark":"light"; try{ localStorage.setItem("prenotazioni_theme",theme); }catch(e){} applyTheme(theme); $("#menu").classList.add("hidden"); };
 /* ---------- ACCESSO E STAFF ---------- */
-function logoutLocal(){ SESS=null; try{ localStorage.removeItem("pren_sessione"); }catch(e){} CACHE=[]; RANGE=null; showLogin(); }
+function logoutLocal(){ SESS=null; try{ localStorage.removeItem("pren_sessione"); localStorage.removeItem("pren_cache"); }catch(e){} CACHE=[]; RANGE=null; showLogin(); }
 async function showLogin(){
   $("#login").classList.remove("hidden");
   $("#lWarn").textContent=""; $("#lPin").value=""; $("#lPin2").value="";
   let conf=true;
-  try{ conf=(await rpc("pren_stato")).configurato; }catch(e){ $("#lWarn").textContent="Connessione assente. Riprova tra poco."; }
+  try{ conf=(await rpc("pren_stato")).configurato; }catch(e){ $("#lWarn").textContent="Serve internet per il primo accesso. Una volta entrato, l'app funziona anche senza rete."; }
   $("#lTitle").textContent = conf ? "Accedi" : "Primo avvio";
   $("#lHint").textContent = conf ? "Inserisci il tuo nome e il tuo PIN." : "Crea l'account dell'amministratore: sarai l'unico a vedere la rubrica e a gestire lo staff.";
   $("#lPin2").classList.toggle("hidden",conf);
@@ -1390,12 +1487,14 @@ async function afterLogin(){
   $("#login").classList.add("hidden");
   $("#mWho").textContent=`👤 ${SESS.nome}${SESS.ruolo==="admin"?" (amministratore)":""}`;
   $("#mStaff").classList.toggle("hidden",SESS.ruolo!=="admin");
-  try{ await loadData(true); }catch(e){ toast(errMsg(e)); }
+  render();
+  if(OUTBOX.length) await flush();
+  try{ await loadData(true); }catch(e){ if(e.message!=="OFFLINE") toast(errMsg(e)); }
   render();
 }
 $("#lGo").onclick=doLogin;
 ["#lNome","#lPin","#lPin2"].forEach(x=>$(x).addEventListener("keydown",e=>{ if(e.key==="Enter") doLogin(); }));
-$("#mLogout").onclick=async()=>{ $("#menu").classList.add("hidden"); try{ await rpc("pren_logout",{p_token:SESS.token}); }catch(e){} logoutLocal(); };
+$("#mLogout").onclick=async()=>{ $("#menu").classList.add("hidden"); if(OUTBOX.length){ toast("Ci sono modifiche non ancora inviate: esci quando torna internet"); return; } try{ await rpc("pren_logout",{p_token:SESS.token}); }catch(e){} logoutLocal(); };
 
 function openStaff(){ $("#menu").classList.add("hidden"); $("#scrim").classList.add("on"); $("#staffSheet").classList.add("on"); renderStaff(); }
 function closeStaff(){ $("#staffSheet").classList.remove("on"); $("#scrim").classList.remove("on"); }
@@ -1428,9 +1527,27 @@ $("#pSave").onclick=async()=>{
   catch(e){ $("#pWarn").textContent = e.message==="CREDENZIALI" ? "PIN attuale errato." : errMsg(e); }
 };
 
+$("#failOk").onclick=()=>{ $("#failSheet").classList.remove("on"); $("#scrim").classList.remove("on"); };
+$("#mPrint").onclick=()=>{
+  $("#menu").classList.add("hidden");
+  const servs = isSunday(state.date) ? ["pranzo","sera"] : ["sera"];
+  let html=`<h1>Prenotazioni ${pd(state.date).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</h1>
+    <div class="pm">Copia di emergenza stampata alle ${hhmm(Date.now())} da ${esc(SESS?.nome||"")}. Dati aggiornati alle ${hhmm(LASTSYNC)}.</div>`;
+  servs.forEach(sv=>{
+    const list=slotRes(state.date,sv).sort((a,b)=>tmin(arrivalTime(a))-tmin(arrivalTime(b)));
+    const pax=list.reduce((t,r)=>t+(+r.pax||0),0);
+    html+=`<h2>${sv==="pranzo"?"Pranzo":"Sera"}: ${list.length} prenotazioni, ${pax} coperti</h2>`;
+    html+= list.length ? `<table><tr><th>#</th><th>Ora</th><th>Tavoli</th><th>Cliente</th><th>Pers.</th><th>Telefono</th><th>Note</th><th class="pck">Arr.</th><th class="pck">Com.</th></tr>`+
+      list.map((r,i)=>`<tr><td>${i+1}</td><td>${arrivalTime(r)}</td><td>${r.tables.map(tname).join(" + ")}</td><td>${esc(r.cliente)}${r.banchetto?" (banchetto)":r.tipo==="bere"?" (solo bere)":""}</td><td>${r.pax}</td><td>${esc(r.tel||"")}</td><td>${esc(r.note||"")}${r.banchetto&&r.menu?"<br>Menù: "+esc(r.menu).replace(/\n/g,", "):""}</td><td>${r.arrived?"✓":""}</td><td>${r.comanda?"✓":""}</td></tr>`).join("")+`</table>` : "<div>Nessuna prenotazione.</div>";
+  });
+  $("#printArea").innerHTML=html;
+  try{ window.print(); }catch(e){ toast("Stampa non disponibile su questo dispositivo"); }
+};
+
 render();
-if(SESS){ rpc("pren_me",{p_token:SESS.token}).then(me=>{ SESS={...SESS,...me}; afterLogin(); }).catch(e=>{ if(e.message==="OFFLINE"){ afterLogin(); } }); }
+if(SESS){ restoreLocal(); afterLogin(); rpc("pren_me",{p_token:SESS.token}).then(me=>{ SESS={...SESS,...me}; try{ localStorage.setItem("pren_sessione",JSON.stringify(SESS)); }catch(e){} $("#mWho").textContent=`👤 ${SESS.nome}${SESS.ruolo==="admin"?" (amministratore)":""}`; $("#mStaff").classList.toggle("hidden",SESS.ruolo!=="admin"); }).catch(()=>{}); }
 else showLogin();
+if("serviceWorker" in navigator && location.protocol==="https:"){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
 
 </script>
 </body>
