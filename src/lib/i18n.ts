@@ -224,6 +224,8 @@ const DICT = {
   offline: { it: "Senza connessione: stai vedendo il menù salvato", en: "No connection: you're viewing the saved menu", de: "Keine Verbindung: du siehst die gespeicherte Karte", fr: "Pas de connexion : vous voyez le menu enregistré", es: "Sin conexión: estás viendo el menú guardado" },
   offline_at: { it: "aggiornato", en: "updated", de: "Stand", fr: "mis à jour", es: "actualizado" },
   backup_menu: { it: "Menù di riserva", en: "Backup menu", de: "Ersatzkarte", fr: "Menu de secours", es: "Menú de reserva" },
+  poster_a4: { it: "Poster A4", en: "A4 poster", de: "A4-Poster", fr: "Affiche A4", es: "Póster A4" },
+  table_sticker: { it: "Adesivo tavolo", en: "Table sticker", de: "Tischaufkleber", fr: "Autocollant de table", es: "Pegatina de mesa" },
   print: { it: "Stampa", en: "Print", de: "Drucken", fr: "Imprimer", es: "Imprimir" },
   scan_title: { it: "Inquadra e scopri le birre di oggi", en: "Scan to see today's beers", de: "Scannen und die Biere von heute entdecken", fr: "Scannez pour découvrir les bières du jour", es: "Escanea y descubre las cervezas de hoy" },
   admin_search: { it: "Cerca nome, birrificio, stile o annata…", en: "Search name, brewery, style or vintage…", de: "Name, Brauerei, Stil oder Jahrgang suchen…", fr: "Rechercher nom, brasserie, style ou millésime…", es: "Buscar nombre, cervecería, estilo o añada…" },
