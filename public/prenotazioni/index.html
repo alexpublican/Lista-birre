@@ -121,7 +121,7 @@ body.isclosed #mapView .floor,body.isclosed .allgrid .floor,body.isclosed #listV
 .floor{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:16px;width:100%;overflow:hidden;
   background-image:radial-gradient(var(--dots) 1px,transparent 1px);background-size:18px 18px}
 .floor.single-narrow{max-width:380px;margin:0 auto}
-.t{position:absolute;border-radius:8px;background:var(--free);border:1.5px solid var(--line2);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2px;overflow:hidden;transition:transform .08s}
+.t{touch-action:manipulation;position:absolute;border-radius:8px;background:var(--free);border:1.5px solid var(--line2);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2px;overflow:hidden;transition:transform .08s}
 .t:active{transform:scale(.95)}
 .t .num{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:clamp(14px,2.8vw,24px);line-height:1;white-space:nowrap}
 .t .seats{font-size:clamp(9px,1.5vw,11.5px);color:var(--muted);margin-top:2px;white-space:nowrap}
@@ -487,7 +487,7 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
 <section id="mapView">
     <div class="tabs" id="rooms"></div>
     <div class="floor" id="floor"></div>
-    <div class="legend"><span><i class="lf"></i>Libero</span><span><i class="lr"></i>Prenotato</span><span><i class="la"></i>Arrivato</span><span><i class="lc"></i>Comanda presa</span><span><i class="lb"></i>Banchetto</span></div>
+    <div class="legend"><span><i class="lf"></i>Libero</span><span><i class="lr"></i>Prenotato</span><span><i class="la"></i>Arrivato</span><span><i class="lc"></i>Comanda presa</span><span><i class="lb"></i>Banchetto</span><span>3 tocchi su un tavolo libero = occupato senza prenotazione 🚶</span></div>
 
   </section>
 
@@ -655,6 +655,16 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
     <div class="warn" id="blWarnF"></div>
   </div>
   <div class="actions"><button class="btn" id="blClose">Chiudi</button><button class="btn primary" id="blSave">Salva</button></div>
+</div>
+<div class="sheet" id="wiSheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2 id="wiTitle">Tavolo occupato</h2>
+  <div class="hint" id="wiHint"></div>
+  <div class="f">
+    <label class="full">Ora di arrivo<input id="wiOra" type="time"></label>
+    <div class="warn" id="wiWarn"></div>
+  </div>
+  <div class="actions"><button class="btn" id="wiCancel">Annulla</button><button class="btn primary" id="wiOk">Occupa il tavolo</button></div>
 </div>
 <div id="printArea"></div>
 <div class="movebar" id="movebar"><span id="moveTxt"></span><div class="mvb"><button id="moveOk" class="hidden">Conferma</button><button id="moveCancel">Annulla</button></div></div>
@@ -990,7 +1000,7 @@ function tablesHTML(room,list){
     if(state.move){ const m=state.move; if(m.multi){ mv = m.sel.includes(t.n) ? " msel" : (r && r.id===m.id) ? " mfrom" : moveOk(t.n)?" mok":" mno"; } else if(r && r.id===m.id) mv = t.n===m.from?" mfrom":" mmine"; else mv = moveOk(t.n)?" mok":" mno"; }
     return `<button class="t ${cls} ${t.botte?"botte":""} ${t.banco?"banco":""}${mv}${r&&r.banchetto?" banq":""}" data-t="${t.n}" style="left:${t.x}%;top:${t.y}%;width:${t.w}%;height:${t.h}%">
       ${r?`<span class="ord">${om[r.id]}</span>`:""}<span class="num">${t.label?esc(t.label):t.n}${r?` <span class="ico">${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]}</span>`:""}</span>
-      ${r?`<span class="who">${blIcon(r)}${r.ric?"🔁":""}${multi?"🔗":""}${esc(r.cliente)} · ${r.pax}</span>`
+      ${r?`<span class="who">${r.walkin?`🚶 ${r.arrivo||""}`:`${blIcon(r)}${r.ric?"🔁":""}${multi?"🔗":""}${esc(r.cliente)} · ${r.pax}`}</span>`
          :`<span class="seats">${t.label?"tav. "+t.n+" · ":""}${t.seats} ${t.seats==="1"?"posto":"posti"}</span>`}
     </button>`;
   }).join("");
@@ -1032,7 +1042,7 @@ function renderList(){
       return `<button class="li ${stCls(r)}" data-t="${t.n}">
         <div class="badge">${t.n}<small>${t.seats}p</small></div>
         <div class="main">
-          ${r?`<div class="name">${blIcon(r)}${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]} ${esc(r.cliente)}${r.ric?' <span class="ric-ico">🔁</span>':""}</div><div class="sub">${sub||"&nbsp;"}</div>${r.banchetto&&r.menu&&t.n===r.tables[0]?`<div class="menu-pre">${esc(r.menu)}${r.prezzo?`\n€ ${r.prezzo} a persona${r.acconto?` · acconto € ${r.acconto}`:""}`:""}</div>`:""}`
+          ${r?`<div class="name">${r.walkin?"🚶":blIcon(r)+(r.banchetto?"🎉":ICO[r.tipo||"mangiano"])} ${esc(r.cliente)}${r.ric?' <span class="ric-ico">🔁</span>':""}</div><div class="sub">${sub||"&nbsp;"}</div>${r.banchetto&&r.menu&&t.n===r.tables[0]?`<div class="menu-pre">${esc(r.menu)}${r.prezzo?`\n€ ${r.prezzo} a persona${r.acconto?` · acconto € ${r.acconto}`:""}`:""}</div>`:""}`
              :`<div class="name empty">Libero${t.label?" · "+esc(t.label):""}</div><div class="sub">Tocca per prenotare</div>`}
         </div>
         <div class="right">${r?`<b>${r.pax} pax</b>${r.arrivo||""}${r.fasce.length>1?`<div class="link">${fasceLabel(r.fasce)}</div>`:""}`:""}</div>
@@ -1146,7 +1156,7 @@ function renderArrivals(){
         const lateMin = now-tmin(arrivalTime(r));
         return `<div class="ar ${r.arrived?"done":""} ${r.comanda?"cmdd":""} ${late?"isl":""}" data-id="${r.id}" role="button">
           <div class="on">${i}</div>
-          <div style="min-width:0"><div class="nm">${blIcon(r)}${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]} ${esc(r.cliente)}${r.ric?" 🔁":""}</div>
+          <div style="min-width:0"><div class="nm">${r.walkin?"🚶":blIcon(r)+(r.banchetto?"🎉":ICO[r.tipo||"mangiano"])} ${esc(r.cliente)}${r.ric?" 🔁":""}</div>
             <div class="dt">Tav. <b>${r.tables.map(tname).join(" + ")}</b>, ${r.pax} pers.${r.fasce.length>1?", "+fasceLabel(r.fasce):""}</div>
             ${r.note?`<div class="nt2">${esc(r.note)}</div>`:""}
             ${late?`<div class="late">In ritardo di ${lateMin} min</div>`:""}</div>
@@ -1544,8 +1554,45 @@ $("#rooms").addEventListener("click",e=>{const b=e.target.closest(".tab"); if(!b
 $("#floor").addEventListener("click",e=>{
   const h=e.target.closest("h4[data-r]"); if(h){ state.room=h.dataset.r; saveUI(); render(); return; }
   const b=e.target.closest(".t"); if(!b) return;
-  if(state.move) doMove(b.dataset.t); else openSheet(b.dataset.t);
+  if(state.move){ doMove(b.dataset.t); return; }
+  tableTap(b.dataset.t);
 });
+/* ---------- TAVOLO OCCUPATO SENZA PRENOTAZIONE (tre tocchi) ---------- */
+let tapT=null, tapN=0, tapTimer=null;
+function tableTap(n){
+  // tavolo già prenotato: si apre subito; tavolo libero: aspetto un attimo per contare i tocchi
+  if(resFor(n,state.fascia) || closedInfo(state.date,state.serv)){ openSheet(n); return; }
+  if(tapT!==n){ tapT=n; tapN=0; }
+  tapN++; clearTimeout(tapTimer);
+  if(tapN>=3){ tapT=null; tapN=0; openWalkin(n); return; }
+  tapTimer=setTimeout(()=>{ const t=tapT; tapT=null; tapN=0; if(t) openSheet(t); }, 320);
+}
+function nowHM(){ const d=new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function fasciaPerOra(hm){ const m=tmin(hm); let f=FASCE[0]; FASCE.forEach(x=>{ if(tmin(x.start)<=m) f=x; }); return f; }
+let wiTable=null;
+function openWalkin(n){
+  wiTable=n;
+  try{ navigator.vibrate&&navigator.vibrate([20,40,20]); }catch(e){}
+  $("#wiTitle").textContent=`Tavolo ${tname(n)} occupato`;
+  $("#wiHint").textContent=`${TABLES[n].roomName}, cliente senza prenotazione`;
+  const today=state.date===iso(new Date());
+  $("#wiOra").value = today ? nowHM() : FASCE.find(f=>f.id===state.fascia).start;
+  $("#wiWarn").textContent="";
+  $("#scrim").classList.add("on"); $("#wiSheet").classList.add("on");
+}
+function closeWalkin(){ $("#wiSheet").classList.remove("on"); $("#scrim").classList.remove("on"); wiTable=null; }
+$("#wiCancel").onclick=closeWalkin;
+$("#wiOk").onclick=()=>{
+  const n=wiTable; if(!n) return;
+  const ora=$("#wiOra").value||nowHM();
+  const f=fasciaPerOra(ora);
+  const fasce=[f.id];
+  if(dayRes().some(r=>!r.noshow && r.tables.includes(n) && r.fasce.includes(f.id))){ $("#wiWarn").textContent=`Il tavolo è già prenotato nella ${f.label}.`; return; }
+  const r={ id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), date:state.date, tables:[n], fasce,
+    cliente:"Senza prenotazione", walkin:true, pax:minSeats(n), tipo:"mangiano", arrivo:ora, arrived:true, updated:new Date().toISOString() };
+  store.save(r); closeWalkin(); if(state.fascia!==f.id){ state.fascia=f.id; } render();
+  toast(`Tavolo ${tname(n)} occupato alle ${ora}`);
+};
 $("#list").addEventListener("click",e=>{const b=e.target.closest(".li"); if(!b) return; if(state.move) doMove(b.dataset.t); else openSheet(b.dataset.t);});
 $("#q").addEventListener("input",renderList);
 $("#onlyRes").addEventListener("change",renderList);
@@ -1553,7 +1600,7 @@ $("#date").addEventListener("change",e=>{ if(e.target.value){state.date=e.target
 const shift=n=>{const [y,m,d]=state.date.split("-").map(Number); state.date=iso(new Date(y,m-1,d+n)); render();};
 $("#prev").onclick=()=>shift(-7); $("#next").onclick=()=>shift(7);
 $("#today").onclick=()=>{state.date=iso(new Date()); render();};
-$("#scrim").onclick=()=>{ closeSheet(); closeClose(); $("#staffSheet").classList.remove("on"); $("#pinSheet").classList.remove("on"); $("#ricSheet").classList.remove("on"); $("#blSheet").classList.remove("on"); }; $("#cancel").onclick=closeSheet; $("#save").onclick=save;
+$("#scrim").onclick=()=>{ closeSheet(); closeClose(); $("#staffSheet").classList.remove("on"); $("#pinSheet").classList.remove("on"); $("#ricSheet").classList.remove("on"); $("#blSheet").classList.remove("on"); $("#wiSheet").classList.remove("on"); }; $("#cancel").onclick=closeSheet; $("#save").onclick=save;
 $("#form").addEventListener("submit",e=>{e.preventDefault(); save();});
 $("#paxMinus").onclick=()=>{$("#fPax").value=Math.max(1,(+$("#fPax").value||1)-1); renderEditor(); banqTotal();};
 $("#paxPlus").onclick=()=>{$("#fPax").value=(+$("#fPax").value||0)+1; renderEditor(); banqTotal();};
