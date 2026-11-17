@@ -267,7 +267,7 @@ const DICT = {
   m_food: { it: "Cosa mangiare", en: "Food", de: "Essen", fr: "À manger", es: "Comida" },
   m_drink_sub: { it: "Birre, vini, distillati, caffetteria e bibite", en: "Beers, wines, spirits, coffee and soft drinks", de: "Biere, Weine, Spirituosen, Kaffee und Softdrinks", fr: "Bières, vins, spiritueux, café et boissons", es: "Cervezas, vinos, licores, café y refrescos" },
   m_home: { it: "Inizio", en: "Home", de: "Start", fr: "Accueil", es: "Inicio" },
-  m_go_food: { it: "Vai a Cosa mangiare →", en: "Go to Food →", de: "Zum Essen →", fr: "Voir À manger →", es: "Ir a Comida →" },
+  m_go_food: { it: "Vai a Cosa mangiare", en: "Go to Food", de: "Zum Essen", fr: "Voir À manger", es: "Ir a Comida" },
   m_go_drink: { it: "Cosa bere →", en: "Drinks →", de: "Getränke →", fr: "Boissons →", es: "Bebidas →" },
   m_open: { it: "Apri", en: "Open", de: "Öffnen", fr: "Ouvrir", es: "Abrir" },
   m_beers: { it: "Birre", en: "Beers", de: "Biere", fr: "Bières", es: "Cervezas" },

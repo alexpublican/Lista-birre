@@ -187,3 +187,11 @@
     outline: 2px solid #F59E0B;
     outline-offset: 2px;
 }
+
+/* Variante "avanti" (es. «Vai a Cosa mangiare →»): stesso bottone, freccia a destra. */
+.mx .back.fwd {
+    padding: 0 12px 0 14px;
+}
+.mx .back.fwd:hover svg {
+    transform: translateX(2px);
+}

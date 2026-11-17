@@ -269,8 +269,8 @@ export function MenuBere() {
           <BackLink className="back" to="/">
             <Ic I={ArrowLeft} /> {t("m_home")}
           </BackLink>
-          <Link className="c2" to="/menu/cibo">
-            {t("m_go_food")}
+          <Link className="back fwd" to="/menu/cibo">
+            {t("m_go_food")} <Ic I={ArrowRight} />
           </Link>
         </div>
         <section className="hero" style={{ paddingTop: 8 }}>
