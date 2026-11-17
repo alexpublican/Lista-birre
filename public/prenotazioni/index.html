@@ -708,7 +708,10 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
   <h2 id="wiTitle">Tavolo occupato</h2>
   <div class="hint" id="wiHint"></div>
   <div class="f">
-    <label class="full">Ora di arrivo<input id="wiOra" type="time"></label>
+    <label>Coperti
+      <div class="paxrow"><button type="button" id="wiMinus">−</button><input id="wiPax" type="number" min="1" max="40" inputmode="numeric"><button type="button" id="wiPlus">+</button></div>
+    </label>
+    <label>Ora di arrivo<input id="wiOra" type="time"></label>
     <div class="warn" id="wiWarn"></div>
   </div>
   <div class="actions"><button class="btn" id="wiCancel">Annulla</button><button class="btn primary" id="wiOk">Occupa il tavolo</button></div>
@@ -1062,7 +1065,7 @@ function tablesHTML(room,list){
     if(state.move){ const m=state.move; if(m.multi){ mv = m.sel.includes(t.n) ? " msel" : (r && r.id===m.id) ? " mfrom" : moveOk(t.n)?" mok":" mno"; } else if(r && r.id===m.id) mv = t.n===m.from?" mfrom":" mmine"; else mv = moveOk(t.n)?" mok":" mno"; }
     return `<button class="t ${cls} ${t.botte?"botte":""} ${t.banco?"banco":""}${mv}${r&&r.banchetto?" banq":""}" data-t="${t.n}" style="left:${t.x}%;top:${t.y}%;width:${t.w}%;height:${t.h}%">
       ${r&&!r.comanda&&(qm[r.id]||!r.arrived)?`<span class="ord">${qm[r.id]?"C"+qm[r.id]:om[r.id]}</span>`:""}<span class="num">${t.label?esc(t.label):t.n}${r?` <span class="ico">${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]}</span>`:""}</span>
-      ${r?`<span class="who">${r.walkin?`🚶 ${r.arrivo||""}`:`${blIcon(r)}${r.ric?"🔁":""}${multi?"🔗":""}${esc(r.cliente)} · ${r.pax}`}</span>`
+      ${r?`<span class="who">${r.walkin?`🚶 ${r.pax} · ${r.arrivo||""}`:`${blIcon(r)}${r.ric?"🔁":""}${multi?"🔗":""}${esc(r.cliente)} · ${r.pax}`}</span>`
          :`<span class="seats">${t.label?"tav. "+t.n+" · ":""}${t.seats} ${t.seats==="1"?"posto":"posti"}</span>`}
     </button>`;
   }).join("");
@@ -1787,12 +1790,15 @@ function openWalkin(n){
   $("#wiTitle").textContent=`Tavolo ${tname(n)} occupato`;
   $("#wiHint").textContent=`${TABLES[n].roomName}, cliente senza prenotazione`;
   const today=state.date===iso(new Date());
+  $("#wiPax").value = Math.min(TABLES[n].max, 2);
   $("#wiOra").value = today ? nowHM() : FASCE.find(f=>f.id===state.fascia).start;
   $("#wiWarn").textContent="";
   $("#scrim").classList.add("on"); $("#wiSheet").classList.add("on");
 }
 function closeWalkin(){ $("#wiSheet").classList.remove("on"); $("#scrim").classList.remove("on"); wiTable=null; }
 $("#wiCancel").onclick=closeWalkin;
+$("#wiMinus").onclick=()=>{ $("#wiPax").value=Math.max(1,(+$("#wiPax").value||1)-1); };
+$("#wiPlus").onclick=()=>{ $("#wiPax").value=(+$("#wiPax").value||0)+1; };
 $("#wiOk").onclick=()=>{
   const n=wiTable; if(!n) return;
   const ora=$("#wiOra").value||nowHM();
@@ -1800,7 +1806,7 @@ $("#wiOk").onclick=()=>{
   const fasce=[f.id];
   if(dayRes().some(r=>!r.noshow && r.tables.includes(n) && r.fasce.includes(f.id))){ $("#wiWarn").textContent=`Il tavolo è già prenotato nella ${f.label}.`; return; }
   const r={ id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), date:state.date, tables:[n], fasce,
-    cliente:"Senza prenotazione", walkin:true, pax:minSeats(n), tipo:"mangiano", arrivo:ora, arrived:true, arrivedAt:new Date().toISOString(), updated:new Date().toISOString() };
+    cliente:"Senza prenotazione", walkin:true, pax:Math.max(1,+$("#wiPax").value||1), tipo:"mangiano", arrivo:ora, arrived:true, arrivedAt:new Date().toISOString(), updated:new Date().toISOString() };
   store.save(r); closeWalkin(); if(state.fascia!==f.id){ state.fascia=f.id; } render();
   toast(`Tavolo ${tname(n)} occupato alle ${ora}`);
 };
