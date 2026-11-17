@@ -322,7 +322,7 @@ body.isclosed #mapView .floor,body.isclosed .allgrid .floor,body.isclosed #listV
 #moveOk{background:var(--amber);color:var(--amber-ink)}
 .t.msel{box-shadow:0 0 0 3px var(--amber);border:2px solid var(--ink)}
 .movebar button{background:var(--paper);color:var(--ink);border-radius:999px;padding:9px 14px;font-weight:700}
-body.moving .fab{display:none}
+body.moving .fab,body.vspec .fab{display:none}
 
 /* rubrica */
 .rb{position:fixed;inset:0;background:var(--paper);z-index:30;overflow:auto;transform:translateY(100%);transition:transform .25s}
@@ -439,6 +439,36 @@ body.moving .fab{display:none}
 .acitem:active{background:var(--chip)}
 .acitem b{display:block;font-size:15px}
 .acitem span{font-size:13px;color:var(--muted);font-weight:500}
+.tabbar button{max-width:150px}
+.sphead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 2px 10px;flex-wrap:wrap}
+.sphead h3{margin:0;font-family:"Barlow Condensed",sans-serif;font-size:24px}
+.sphead h3::first-letter{text-transform:uppercase}
+.sphead .sm{font-size:13px;color:var(--muted)}
+.spcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.spcard.out{border-color:var(--danger)}
+.sptop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.spname{font-family:"Barlow Condensed",sans-serif;font-size:24px;font-weight:700;line-height:1.05}
+.spdesc{font-size:13.5px;color:var(--muted);margin-top:2px;white-space:pre-line}
+.spleft{text-align:right;line-height:1}
+.spleft b{font-family:"Barlow Condensed",sans-serif;font-size:34px;font-weight:700;display:block}
+.spleft span{font-size:12px;color:var(--muted)}
+.spcard.low .spleft b{color:var(--yellow)}
+.spcard.out .spleft b{color:var(--danger);font-size:22px}
+.sprow{display:flex;gap:10px;align-items:center;margin-top:10px}
+.spgrid{display:flex;flex-wrap:wrap;gap:6px;flex:1}
+.sq{width:34px;height:34px;border-radius:7px;border:2px solid var(--line2);background:transparent;position:relative;touch-action:manipulation}
+.sq.on{border-color:var(--ink)}
+.sq.on::before,.sq.on::after{content:"";position:absolute;left:4px;right:4px;top:50%;height:2.5px;background:var(--ink);border-radius:2px}
+.sq.on::before{transform:rotate(45deg)} .sq.on::after{transform:rotate(-45deg)}
+.spbtn{width:52px;height:52px;border-radius:14px;font-size:28px;font-weight:600;background:var(--chip);flex:0 0 auto;touch-action:manipulation}
+.spbtn.plus{background:var(--acc);color:var(--acc-ink)}
+.spbtn:disabled{opacity:.3}
+.spnote{width:100%;min-height:90px;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--panel);color:var(--ink);font-size:16px;resize:vertical}
+.sptools{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px}
+.sprowed{display:grid;grid-template-columns:1fr 74px 40px;gap:6px;margin-bottom:8px;align-items:start}
+.sprowed input{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--paper);color:var(--ink);font-size:16px;width:100%}
+.sprowed .desc{grid-column:1 / span 2}
+.sprowed .rm{height:42px;border-radius:10px;background:var(--dangerbg);color:var(--danger);font-weight:700}
 /* tema: rifiniture */
 h1{font-size:30px;letter-spacing:.01em}
 h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margin-top:3px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--cmd))}
@@ -506,6 +536,9 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
 
   <section id="arrView" class="hidden"><div id="arrList"></div></section>
 
+  <section id="specView" class="hidden"><div id="specBody"><div id="spCards"></div>
+    <div class="fieldlbl">Note del giorno</div><textarea class="spnote" id="spNote" placeholder="Es. finito il pane alle 21, birra speciale alla spina, allergeni del piatto del giorno…"></textarea></div></section>
+
   <section id="weekView" class="hidden"><div id="weekGrid"></div></section>
 
   <section id="listView" class="hidden">
@@ -523,6 +556,7 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
   <button data-v="arr"><span class="ti">⏱</span>Arrivi</button>
   <button data-v="list"><span class="ti">☰</span>Elenco</button>
   <button data-v="week"><span class="ti">▤</span>Settimana</button>
+  <button data-v="spec"><span class="ti">✎</span>Speciali</button>
 </nav>
 <div class="scrim" id="scrim"></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true">
@@ -679,6 +713,15 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
   </div>
   <div class="actions"><button class="btn" id="wiCancel">Annulla</button><button class="btn primary" id="wiOk">Occupa il tavolo</button></div>
 </div>
+<div class="sheet" id="spSheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2 id="spTitle">Speciali del giorno</h2>
+  <div class="hint">Scrivi i piatti e quante porzioni ci sono. Le porzioni già segnate restano.</div>
+  <div id="spRows"></div>
+  <button type="button" class="chip add" id="spAddRow" style="margin-top:8px">+ Aggiungi piatto</button>
+  <div class="warn" id="spWarn" style="margin-top:8px"></div>
+  <div class="actions"><button class="btn" id="spCancel">Annulla</button><button class="btn primary" id="spSave">Salva</button></div>
+</div>
 <div id="printArea"></div>
 <div class="movebar" id="movebar"><span id="moveTxt"></span><div class="mvb"><button id="moveOk" class="hidden">Conferma</button><button id="moveCancel">Annulla</button></div></div>
 <div class="sheet" id="clSheet" role="dialog" aria-modal="true">
@@ -787,7 +830,7 @@ const tname = n => TABLES[n]?.banco ? `Banco ${n.slice(1)}` : TABLES[n]?.label ?
 const SUPA_URL="https://fizctwlkmdngftolwrsd.supabase.co";
 const SUPA_KEY="sb_publishable_ZoTWUkBjXXO-Hvc1oGC5cA_L2VvDSq5";
 let SESS=null; try{ SESS=JSON.parse(localStorage.getItem("pren_sessione")||"null"); }catch(e){}
-let BL={};
+let BL={}, SPEC={};
 let CACHE=[], VER=-1, RANGE=null, CHIUSURE={dates:{},weekly:{},open:{}}, ONLINE=true;
 async function rpc(fn,args={}){
   let res;
@@ -818,22 +861,25 @@ let OUTBOX=[], LASTSYNC=null, FLUSHING=false, FAILED=[];
 try{ OUTBOX=JSON.parse(localStorage.getItem("pren_outbox")||"[]"); }catch(e){}
 function persistLocal(){
   try{
-    localStorage.setItem("pren_cache",JSON.stringify({CACHE,CHIUSURE,VER,RANGE,LASTSYNC,BL}));
+    localStorage.setItem("pren_cache",JSON.stringify({CACHE,CHIUSURE,VER,RANGE,LASTSYNC,BL,SPEC}));
     localStorage.setItem("pren_outbox",JSON.stringify(OUTBOX));
   }catch(e){}
 }
 function restoreLocal(){
-  try{ const c=JSON.parse(localStorage.getItem("pren_cache")||"null"); if(c){ CACHE=(c.CACHE||[]).map(normalize); CHIUSURE=c.CHIUSURE||CHIUSURE; BL=c.BL||{}; VER=c.VER??-1; RANGE=c.RANGE||null; LASTSYNC=c.LASTSYNC||null; } }catch(e){}
+  try{ const c=JSON.parse(localStorage.getItem("pren_cache")||"null"); if(c){ CACHE=(c.CACHE||[]).map(normalize); CHIUSURE=c.CHIUSURE||CHIUSURE; BL=c.BL||{}; SPEC=c.SPEC||{}; VER=c.VER??-1; RANGE=c.RANGE||null; LASTSYNC=c.LASTSYNC||null; } }catch(e){}
 }
 function applyOp(op){
   if(op.op==="save"){ const i=CACHE.findIndex(x=>x.id===op.data.id); if(i>=0) CACHE[i]=op.data; else CACHE.push(op.data); }
   else if(op.op==="del"){ CACHE=CACHE.filter(x=>x.id!==op.id); }
   else if(op.op==="chiusure"){ CHIUSURE=op.data; }
+  else if(op.op==="spec_save"){ const cur=SPEC[op.date]||{piatti:[]}; SPEC[op.date]={note:op.data.note||"", piatti:op.data.piatti.map(p=>{ const c=(cur.piatti||[]).find(x=>x.id===p.id); return {...p, venduti:Math.min(p.tot, c?c.venduti||0:0)}; })}; }
+  else if(op.op==="spec_conta"){ const d=SPEC[op.date]; const p=d&&d.piatti.find(x=>x.id===op.piatto); if(p) p.venduti=Math.max(0,Math.min(p.tot,(p.venduti||0)+op.delta)); }
 }
 function queue(op){
   // una sola operazione in coda per prenotazione (vale l'ultima)
   if(op.op==="save"||op.op==="del") OUTBOX=OUTBOX.filter(o=>!((o.op==="save"&&o.data.id===(op.id||op.data.id))||(o.op==="del"&&o.id===(op.id||op.data.id))));
   if(op.op==="chiusure") OUTBOX=OUTBOX.filter(o=>o.op!=="chiusure");
+  if(op.op==="spec_save") OUTBOX=OUTBOX.filter(o=>!(o.op==="spec_save"&&o.date===op.date));
   OUTBOX.push({...op, ts:Date.now(), by:SESS?.nome});
   applyOp(op); persistLocal(); renderNet(); flush();
 }
@@ -847,7 +893,9 @@ async function flush(){
       if(op.op==="save") await rpc("pren_salva",{p_token:SESS.token,p_dati:op.data});
       else if(op.op==="del") await rpc("pren_elimina",{p_token:SESS.token,p_id:op.id});
       else if(op.op==="chiusure") await rpc("pren_salva_chiusure",{p_token:SESS.token,p_valore:op.data});
-      OUTBOX.shift(); sent++; persistLocal();
+      else if(op.op==="spec_save") await rpc("pren_speciali_salva",{p_token:SESS.token,p_data:op.date,p_dati:op.data});
+      else if(op.op==="spec_conta") await rpc("pren_speciali_conta",{p_token:SESS.token,p_data:op.date,p_piatto:op.piatto,p_delta:op.delta});
+      OUTBOX.shift(); if(!op.op.startsWith("spec")) sent++; persistLocal();
     }catch(e){
       if(e.message==="OFFLINE" || e.message==="SESSIONE_SCADUTA") break;
       // rifiutata dal server (es. tavolo già preso da un collega): la tolgo e la segnalo
@@ -867,7 +915,7 @@ async function loadData(force){
   if(RANGE && !force && want.dal>=RANGE.dal && want.al<=RANGE.al) return;
   const range = RANGE ? {dal: want.dal<RANGE.dal?want.dal:RANGE.dal, al: want.al>RANGE.al?want.al:RANGE.al} : want;
   const d=await rpc("pren_carica",{p_token:SESS.token,p_dal:range.dal,p_al:range.al});
-  RANGE=range; CACHE=(d.prenotazioni||[]).map(normalize); VER=d.versione; CHIUSURE=d.chiusure||CHIUSURE; BL=d.blacklist||{};
+  RANGE=range; CACHE=(d.prenotazioni||[]).map(normalize); VER=d.versione; CHIUSURE=d.chiusure||CHIUSURE; BL=d.blacklist||{}; SPEC=d.speciali||{};
   OUTBOX.forEach(applyOp); // le modifiche non ancora inviate restano visibili
   LASTSYNC=Date.now(); persistLocal(); renderNet();
 }
@@ -1083,13 +1131,15 @@ function render(){
   $("#listView").classList.toggle("hidden",state.view!=="list");
   $("#weekView").classList.toggle("hidden",state.view!=="week");
   $("#arrView").classList.toggle("hidden",state.view!=="arr");
+  $("#specView").classList.toggle("hidden",state.view!=="spec");
+  document.body.classList.toggle("vspec",state.view==="spec");
   const wk=state.view==="week";
   const cl=closedInfo(state.date,state.serv);
-  const ar=state.view==="arr";
+  const ar=state.view==="arr"||state.view==="spec";
   $("#fasce").classList.toggle("hidden",wk||ar); $("#stats").classList.toggle("hidden",wk||ar||!!cl);
   document.body.classList.toggle("isclosed",!!cl && !wk);
-  $("#closedBar").classList.toggle("hidden",wk);
-  if(state.view==="map") renderFloor(); else if(state.view==="list") renderList(); else if(state.view==="arr") renderArrivals(); else renderWeekGrid();
+  $("#closedBar").classList.toggle("hidden",wk||state.view==="spec");
+  if(state.view==="map") renderFloor(); else if(state.view==="list") renderList(); else if(state.view==="arr") renderArrivals(); else if(state.view==="spec") renderSpec(); else renderWeekGrid();
 }
 
 
@@ -1341,6 +1391,78 @@ $("#blSave").onclick=async()=>{
     await rpc("pren_blacklist_salva",{p_token:SESS.token,p_chiave:blEdit||"",p_dati:{nome,tel,note:$("#blNote").value.trim(),bloccato:$("#blBlocca").checked}});
     await loadData(true); render(); blEdit=null; blFormReset(); renderBl(); toast("Black list aggiornata");
   }catch(err){ $("#blWarnF").textContent = err.message==="OFFLINE" ? "Serve internet per salvare." : errMsg(err); }
+};
+
+/* ---------- SPECIALI DI GIORNATA ---------- */
+function specOf(d){ return SPEC[d] || {piatti:[], note:""}; }
+function lastSpecBefore(d){ return Object.keys(SPEC).filter(k=>k<d && (SPEC[k].piatti||[]).length).sort().pop(); }
+function renderSpec(){
+  const d=state.date, sp=specOf(d), piatti=sp.piatti||[];
+  const tot=piatti.reduce((s,p)=>s+(+p.tot||0),0), vend=piatti.reduce((s,p)=>s+(+p.venduti||0),0);
+  const prev=lastSpecBefore(d);
+  let html=`<div class="sphead"><h3>Speciali di ${pd(d).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"})}</h3>${piatti.length?`<span class="sm">${vend} venduti, ${tot-vend} rimasti</span>`:""}</div>`;
+  if(!piatti.length){
+    html+=`<div class="empty-state">Nessuno speciale per questo giorno.<div class="sptools" style="justify-content:center;margin-top:12px"><button class="btn primary" id="spNew" style="flex:0 0 auto">+ Aggiungi piatti</button>${prev?`<button class="btn" id="spCopy" data-from="${prev}" style="flex:0 0 auto">Copia da ${dIt(prev)}</button>`:""}</div></div>`;
+  } else {
+    html+=piatti.map(p=>{
+      const left=(+p.tot||0)-(+p.venduti||0);
+      return `<div class="spcard ${left<=0?"out":left<=2?"low":""}" data-p="${esc(p.id)}">
+        <div class="sptop"><div><div class="spname">${esc(p.nome)}</div>${p.desc?`<div class="spdesc">${esc(p.desc)}</div>`:""}</div>
+          <div class="spleft">${left<=0?"<b>Esaurito</b>":`<b>${left}</b><span>rimast${left===1?"a":"e"} su ${p.tot}</span>`}</div></div>
+        <div class="sprow"><button class="spbtn" data-d="-1" ${p.venduti>0?"":"disabled"} aria-label="Togli una">−</button>
+          <div class="spgrid">${Array.from({length:+p.tot||0},(_,i)=>`<button class="sq ${i<(p.venduti||0)?"on":""}" data-i="${i}" aria-label="Porzione ${i+1}"></button>`).join("")}</div>
+          <button class="spbtn plus" data-d="1" ${left>0?"":"disabled"} aria-label="Segna una venduta">+</button></div>
+      </div>`;
+    }).join("");
+    html+=`<div class="sptools"><button class="btn" id="spEdit" style="flex:0 0 auto">✏️ Modifica piatti</button></div>`;
+  }
+  $("#spCards").innerHTML=html;
+  const ta=$("#spNote");
+  if(document.activeElement!==ta || ta.dataset.date!==d){ ta.value=sp.note||""; ta.dataset.date=d; }
+}
+function specCount(id,delta){
+  queue({op:"spec_conta", date:state.date, piatto:id, delta});
+  renderSpec();
+  try{ navigator.vibrate&&navigator.vibrate(12); }catch(e){}
+}
+$("#specBody").addEventListener("click",e=>{
+  const card=e.target.closest(".spcard");
+  if(card){
+    const id=card.dataset.p, p=specOf(state.date).piatti.find(x=>x.id===id); if(!p) return;
+    const b=e.target.closest("[data-d]"); if(b){ specCount(id,+b.dataset.d); return; }
+    const sq=e.target.closest(".sq"); if(sq){ const i=+sq.dataset.i; specCount(id, i<(p.venduti||0) ? -1 : 1); return; }
+  }
+  if(e.target.id==="spNew"||e.target.id==="spEdit") openSpecEditor();
+  if(e.target.id==="spCopy"){ const src=specOf(e.target.dataset.from); openSpecEditor(src.piatti.map(p=>({nome:p.nome,desc:p.desc||"",tot:p.tot}))); }
+});
+let spNoteTimer=null;
+$("#specBody").addEventListener("input",e=>{
+  if(e.target.id!=="spNote") return;
+  clearTimeout(spNoteTimer);
+  const val=e.target.value, d=state.date;
+  spNoteTimer=setTimeout(()=>{ const sp=specOf(d); queue({op:"spec_save", date:d, data:{piatti:sp.piatti||[], note:val}}); },700);
+});
+function spRow(p){ return `<div class="sprowed" data-id="${esc(p.id||"")}"><input class="nm" placeholder="Piatto (es. Torta)" value="${esc(p.nome||"")}"><input class="qt" type="number" min="0" inputmode="numeric" placeholder="Porz." value="${p.tot??""}"><button type="button" class="rm" aria-label="Togli">✕</button><input class="desc" placeholder="Dettagli (facoltativo, es. polpettine, melanzana)" value="${esc(p.desc||"")}"></div>`; }
+function openSpecEditor(prefill){
+  const sp=specOf(state.date);
+  const rows = prefill || (sp.piatti.length ? sp.piatti : [{},{},{}]);
+  $("#spTitle").textContent="Speciali di "+pd(state.date).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"});
+  $("#spRows").innerHTML=rows.map(spRow).join(""); $("#spWarn").textContent="";
+  $("#scrim").classList.add("on"); $("#spSheet").classList.add("on");
+}
+function closeSpecEditor(){ $("#spSheet").classList.remove("on"); $("#scrim").classList.remove("on"); }
+$("#spAddRow").onclick=()=>{ $("#spRows").insertAdjacentHTML("beforeend",spRow({})); $("#spRows .sprowed:last-child .nm").focus(); };
+$("#spRows").addEventListener("click",e=>{ const b=e.target.closest(".rm"); if(b) b.closest(".sprowed").remove(); });
+$("#spCancel").onclick=closeSpecEditor;
+$("#spSave").onclick=()=>{
+  const piatti=[...document.querySelectorAll("#spRows .sprowed")].map(r=>({
+    id: r.dataset.id || (Date.now().toString(36)+Math.random().toString(36).slice(2,6)),
+    nome: r.querySelector(".nm").value.trim(), desc: r.querySelector(".desc").value.trim(),
+    tot: Math.max(0, Math.min(99, parseInt(r.querySelector(".qt").value)||0)) })).filter(p=>p.nome);
+  if(piatti.some(p=>!p.tot)){ $("#spWarn").textContent="Indica quante porzioni ci sono per ogni piatto."; return; }
+  const sp=specOf(state.date);
+  queue({op:"spec_save", date:state.date, data:{piatti, note:sp.note||""}});
+  closeSpecEditor(); renderSpec(); toast("Speciali salvati");
 };
 
 /* ---------- EDITOR ---------- */
@@ -1689,7 +1811,7 @@ $("#date").addEventListener("change",e=>{ if(e.target.value){state.date=e.target
 const shift=n=>{const [y,m,d]=state.date.split("-").map(Number); state.date=iso(new Date(y,m-1,d+n)); render();};
 $("#prev").onclick=()=>shift(-7); $("#next").onclick=()=>shift(7);
 $("#today").onclick=()=>{state.date=iso(new Date()); render();};
-$("#scrim").onclick=()=>{ closeSheet(); closeClose(); $("#staffSheet").classList.remove("on"); $("#pinSheet").classList.remove("on"); $("#ricSheet").classList.remove("on"); $("#blSheet").classList.remove("on"); $("#wiSheet").classList.remove("on"); }; $("#cancel").onclick=closeSheet; $("#save").onclick=save;
+$("#scrim").onclick=()=>{ closeSheet(); closeClose(); $("#staffSheet").classList.remove("on"); $("#pinSheet").classList.remove("on"); $("#ricSheet").classList.remove("on"); $("#blSheet").classList.remove("on"); $("#wiSheet").classList.remove("on"); $("#spSheet").classList.remove("on"); }; $("#cancel").onclick=closeSheet; $("#save").onclick=save;
 $("#form").addEventListener("submit",e=>{e.preventDefault(); save();});
 $("#paxMinus").onclick=()=>{$("#fPax").value=Math.max(1,(+$("#fPax").value||1)-1); renderEditor(); banqTotal();};
 $("#paxPlus").onclick=()=>{$("#fPax").value=(+$("#fPax").value||0)+1; renderEditor(); banqTotal();};
