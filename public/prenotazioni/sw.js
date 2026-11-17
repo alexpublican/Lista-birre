@@ -1,7 +1,7 @@
 // Copia offline del gestionale prenotazioni: la pagina si apre anche senza internet.
 // La pagina viene presa dalla rete quando c'è (così gli aggiornamenti arrivano subito),
 // altrimenti dall'ultima copia salvata. I dati delle prenotazioni li salva la pagina stessa.
-const CACHE = "prenotazioni-v8";
+const CACHE = "prenotazioni-v9";
 const PAGINE = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {

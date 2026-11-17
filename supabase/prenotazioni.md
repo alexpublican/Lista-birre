@@ -48,3 +48,10 @@ prenotazioni con `noshow: true` non contano nei controlli di sovrapposizione) e 
 (`pren_blacklist_salva`); solo l'amministratore può togliere qualcuno (`pren_blacklist_rimuovi`).
 Nell'app: 1 no show = avviso giallo, 2 o più (o "bloccato") = avviso rosso quando si inserisce nome o telefono.
 Migrazione: `prenotazioni_blacklist`.
+
+## Suggerimento clienti mentre si scrive
+
+`pren_cerca_cliente(token, testo)`: cerca per nome (o per almeno 3 cifre del telefono) nelle prenotazioni
+passate e future e restituisce nome, telefono, visite e ultima data (max 8). Le note della rubrica non
+vengono mai restituite; i contatti aggiunti solo in rubrica compaiono soltanto all'amministratore.
+Migrazione: `prenotazioni_cerca_cliente`.

@@ -432,6 +432,13 @@ body.moving .fab{display:none}
 .ckb.mini{font-size:12px;padding:6px 10px;color:var(--muted)}
 .ar.compact{padding:7px 12px}
 .ar.compact .on{width:28px;height:28px;font-size:15px}
+.acwrap{position:relative}
+.acbox{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--raised);border:1px solid var(--line2);border-radius:12px;box-shadow:0 12px 28px var(--shadow2);z-index:5;overflow:hidden}
+.acitem{display:block;width:100%;text-align:left;padding:10px 12px;border-top:1px solid var(--line);color:var(--ink)}
+.acitem:first-child{border-top:0}
+.acitem:active{background:var(--chip)}
+.acitem b{display:block;font-size:15px}
+.acitem span{font-size:13px;color:var(--muted);font-weight:500}
 /* tema: rifiniture */
 h1{font-size:30px;letter-spacing:.01em}
 h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margin-top:3px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--cmd))}
@@ -523,13 +530,13 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
   <h2 id="sTitle">Tavolo</h2>
   <div class="hint" id="sHint"></div>
   <form class="f" id="form" autocomplete="off">
-    <label class="full">Cliente<input id="fCliente" required placeholder="Nome e cognome"></label>
+    <label class="full acwrap">Cliente<input id="fCliente" required placeholder="Nome e cognome" autocomplete="off"><div class="acbox hidden" id="acCliente"></div></label>
     <div class="full"><div class="chips tipo" id="fTipo"><button type="button" class="chip" data-tipo="mangiano">🍽️ Mangiano</button><button type="button" class="chip" data-tipo="bere">🍺 Solo bere</button></div></div>
     <label>Persone (pax)
       <div class="paxrow"><button type="button" id="paxMinus">−</button><input id="fPax" type="number" min="1" max="40" inputmode="numeric" value="2"><button type="button" id="paxPlus">+</button></div>
     </label>
     <label>Arrivo<input id="fArrivo" type="time"></label>
-    <label class="full">Telefono<input id="fTel" type="tel" inputmode="tel" placeholder="333 …"></label>
+    <label class="full acwrap">Telefono<input id="fTel" type="tel" inputmode="tel" placeholder="333 …" autocomplete="off"><div class="acbox hidden" id="acTel"></div></label>
     <div class="full"><div class="fieldlbl">Fasce (puoi sceglierne più di una)</div><div class="chips" id="fFasce"></div></div>
     <div class="full"><div class="fieldlbl">Tavoli (puoi unirne più di uno)</div><div id="sug"></div><div class="chips" id="fTavoli"></div><div class="cap" id="cap"></div><div class="picker hidden" id="picker"></div></div>
     <div class="full"><button type="button" class="chip banq" id="fBanq">🎉 Banchetto</button></div>
@@ -1419,6 +1426,7 @@ function renderEditor(){
 function openSheet(tableN, opts={}){
   if(closedInfo(state.date,state.serv) && !(tableN && resFor(tableN,state.fascia))){ toast("Giorno chiuso: riaprilo per prenotare"); return; }
   const r=opts.res || (tableN?resFor(tableN,state.fascia):null);
+  $("#acCliente").classList.add("hidden"); $("#acTel").classList.add("hidden");
   state.editing = r ? JSON.parse(JSON.stringify(r)) : {id:null, tables:tableN?[tableN]:[], fasce:[state.fascia]};
   state.editing._from = tableN;
   pickerOpen=!tableN; delArmed=false;
@@ -1503,6 +1511,55 @@ function blCheck(){
                        : `<b>⚠️ Ha già fatto un no show</b>${esc(blText(f.e))}.`;
 }
 ["#fTel","#fCliente"].forEach(x=>$(x).addEventListener("input",blCheck));
+/* ---------- CLIENTI GIÀ REGISTRATI: suggerimenti mentre si scrive ---------- */
+let acTimer=null, acSeq=0;
+function acLocal(q){
+  const ql=q.toLowerCase(), qd=q.replace(/\D/g,""), map={};
+  CACHE.forEach(r=>{
+    if(!r.tel || r.walkin) return;
+    const hit = (r.cliente||"").toLowerCase().includes(ql) || (qd.length>=3 && r.tel.replace(/\D/g,"").includes(qd));
+    if(!hit) return;
+    const k=telKey(r.tel); const c=map[k]||(map[k]={nome:r.cliente,tel:r.tel,visite:0,ultima:""});
+    c.visite++; if(r.date>c.ultima){ c.ultima=r.date; c.nome=r.cliente; c.tel=r.tel; }
+  });
+  return Object.values(map);
+}
+function acShow(box,list,field){
+  const cur=telKey($("#fTel").value);
+  list=list.filter(c=>!(cur && telKey(c.tel)===cur && field==="tel"));
+  if(!list.length){ box.classList.add("hidden"); box.innerHTML=""; return; }
+  box.innerHTML=list.slice(0,6).map(c=>{ const f=blFind(c.tel,c.nome), l=blLevel(f&&f.e);
+    return `<button type="button" class="acitem" data-n="${esc(c.nome)}" data-t="${esc(c.tel)}"><b>${l===2?"⛔ ":l===1?"⚠️ ":""}${esc(c.nome)}</b><span>${esc(c.tel)}${c.visite?`, ${c.visite} ${c.visite>1?"visite":"visita"}`:""}${c.ultima?`, ultima ${dIt(c.ultima)}`:""}</span></button>`; }).join("");
+  box.classList.remove("hidden");
+}
+function acSearch(field){
+  const inp = field==="nome" ? $("#fCliente") : $("#fTel");
+  const box = field==="nome" ? $("#acCliente") : $("#acTel");
+  const q=inp.value.trim();
+  const enough = field==="nome" ? q.length>=2 : q.replace(/\D/g,"").length>=3;
+  if(!enough || (state.editing && state.editing.id && field==="nome" && q===state.editing.cliente)){ box.classList.add("hidden"); return; }
+  const local=acLocal(q); acShow(box,local,field);
+  clearTimeout(acTimer); const my=++acSeq;
+  acTimer=setTimeout(async()=>{
+    if(!ONLINE || !SESS) return;
+    try{
+      const remote=await rpc("pren_cerca_cliente",{p_token:SESS.token,p_q:q});
+      if(my!==acSeq) return;
+      const byK={}; [...remote,...local].forEach(c=>{ const k=telKey(c.tel); if(!byK[k]) byK[k]=c; });
+      acShow(box,Object.values(byK).sort((a,b)=>(b.ultima||"").localeCompare(a.ultima||"")||(b.visite||0)-(a.visite||0)),field);
+    }catch(e){}
+  },250);
+}
+$("#fCliente").addEventListener("input",()=>acSearch("nome"));
+$("#fTel").addEventListener("input",()=>acSearch("tel"));
+["#acCliente","#acTel"].forEach(id=>$(id).addEventListener("mousedown",e=>e.preventDefault()));
+["#acCliente","#acTel"].forEach(id=>$(id).addEventListener("click",e=>{
+  const b=e.target.closest(".acitem"); if(!b) return;
+  $("#fCliente").value=b.dataset.n; $("#fTel").value=b.dataset.t;
+  $("#acCliente").classList.add("hidden"); $("#acTel").classList.add("hidden");
+  blCheck(); toast("Cliente già registrato: telefono inserito");
+}));
+["#fCliente","#fTel"].forEach(id=>$(id).addEventListener("blur",()=>setTimeout(()=>{ $("#acCliente").classList.add("hidden"); $("#acTel").classList.add("hidden"); },150)));
 $("#nsBtn").onclick=()=>{ const e=state.editing; if(!e?.id) return; const val=!e.noshow; closeSheet(); setNoShow(e.id,val); };
 
 /* ---------- SPOSTA ---------- */
