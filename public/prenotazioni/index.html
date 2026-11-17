@@ -220,7 +220,7 @@ body.isclosed #mapView .floor,body.isclosed .allgrid .floor,body.isclosed #listV
 /* arrivi */
 .ord{position:absolute;top:0;right:0;min-width:14px;height:14px;border-radius:0 6px 0 6px;background:var(--inv);color:var(--inv-ink);font-size:9.5px;font-weight:700;line-height:14px;padding:0 3px;font-family:"Barlow",sans-serif}
 @media (max-width:600px){ .t .ico{display:none} .t.res .num,.t.arr .num,.t.cmd .num{margin-top:4px} }
-.t.arr .ord{background:var(--yellow-ink);color:#fff}
+.t.arr .ord{background:var(--yellow-ink);color:#fff;font-weight:800}
 .mini .ord{display:none}
 @media (min-width:760px){ .mini .ord{display:block;min-width:13px;height:13px;line-height:13px;font-size:9px;border-radius:7px;padding:0 3px;top:1px;right:1px} }
 .next{background:var(--inv);color:var(--inv-ink);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
@@ -426,6 +426,12 @@ body.moving .fab{display:none}
 .blrow .nm{font-weight:700}
 .blrow .dt{font-size:13px;color:var(--muted)}
 .blrow .bt{display:flex;gap:6px}
+.qslot .slothd .tm{font-size:20px}
+.ar.first{box-shadow:inset 4px 0 0 var(--yellow)}
+.ar .waitm{font-size:12px;color:var(--muted);font-weight:600}
+.ckb.mini{font-size:12px;padding:6px 10px;color:var(--muted)}
+.ar.compact{padding:7px 12px}
+.ar.compact .on{width:28px;height:28px;font-size:15px}
 /* tema: rifiniture */
 h1{font-size:30px;letter-spacing:.01em}
 h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margin-top:3px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--cmd))}
@@ -992,6 +998,7 @@ function renderRooms(){
 }
 function tablesHTML(room,list){
   const om=orderMap();
+  const qm={}; orderedRes().filter(r=>r.arrived&&!r.comanda).sort((a,b)=>new Date(a.arrivedAt||a.updated||0)-new Date(b.arrivedAt||b.updated||0)).forEach((r,i)=>qm[r.id]=i+1);
   return room.tables.map(t=>{
     const r=resFor(t.n,state.fascia,list);
     const cls = stCls(r);
@@ -999,7 +1006,7 @@ function tablesHTML(room,list){
     let mv="";
     if(state.move){ const m=state.move; if(m.multi){ mv = m.sel.includes(t.n) ? " msel" : (r && r.id===m.id) ? " mfrom" : moveOk(t.n)?" mok":" mno"; } else if(r && r.id===m.id) mv = t.n===m.from?" mfrom":" mmine"; else mv = moveOk(t.n)?" mok":" mno"; }
     return `<button class="t ${cls} ${t.botte?"botte":""} ${t.banco?"banco":""}${mv}${r&&r.banchetto?" banq":""}" data-t="${t.n}" style="left:${t.x}%;top:${t.y}%;width:${t.w}%;height:${t.h}%">
-      ${r?`<span class="ord">${om[r.id]}</span>`:""}<span class="num">${t.label?esc(t.label):t.n}${r?` <span class="ico">${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]}</span>`:""}</span>
+      ${r&&!r.comanda&&(qm[r.id]||!r.arrived)?`<span class="ord">${qm[r.id]?"C"+qm[r.id]:om[r.id]}</span>`:""}<span class="num">${t.label?esc(t.label):t.n}${r?` <span class="ico">${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]}</span>`:""}</span>
       ${r?`<span class="who">${r.walkin?`🚶 ${r.arrivo||""}`:`${blIcon(r)}${r.ric?"🔁":""}${multi?"🔗":""}${esc(r.cliente)} · ${r.pax}`}</span>`
          :`<span class="seats">${t.label?"tav. "+t.n+" · ":""}${t.seats} ${t.seats==="1"?"posto":"posti"}</span>`}
     </button>`;
@@ -1132,40 +1139,63 @@ function arrivalTime(r){ return r.arrivo || FASCE_ALL.find(f=>f.id===Math.min(..
 function orderedRes(){ return dayRes().filter(r=>!r.noshow).sort((a,b)=>tmin(arrivalTime(a))-tmin(arrivalTime(b)) || (a.updated||"").localeCompare(b.updated||"")); }
 function orderMap(){ const m={}; orderedRes().forEach((r,i)=>m[r.id]=i+1); return m; }
 function nowMin(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
+function sinceMin(ts){ return ts ? Math.max(0,Math.floor((Date.now()-new Date(ts).getTime())/60000)) : null; }
+function arrRow(r,i,opts={}){
+  const isToday=state.date===iso(new Date()), now=nowMin();
+  const late = isToday && !r.arrived && tmin(arrivalTime(r))+10<now;
+  const canNS = !r.arrived && (late || state.date<iso(new Date()));
+  const lateMin = now-tmin(arrivalTime(r));
+  const wait = opts.queue ? sinceMin(r.arrivedAt||r.updated) : null;
+  return `<div class="ar ${r.arrived?"done":""} ${r.comanda?"cmdd":""} ${late?"isl":""} ${opts.queue&&i===1?"first":""}" data-id="${r.id}" role="button">
+    <div class="on">${opts.mark||i}</div>
+    <div style="min-width:0"><div class="nm">${r.walkin?"🚶":blIcon(r)+(r.banchetto?"🎉":ICO[r.tipo||"mangiano"])} ${esc(r.cliente)}${r.ric?" 🔁":""}</div>
+      <div class="dt">Tav. <b>${r.tables.map(tname).join(" + ")}</b>, ${r.pax} pers.${opts.queue?`, arrivato ${r.arrivedAt?hhmm(r.arrivedAt):""}`:`, ${arrivalTime(r)}`}${r.fasce.length>1?", "+fasceLabel(r.fasce):""}</div>
+      ${r.note?`<div class="nt2">${esc(r.note)}</div>`:""}
+      ${wait!==null?`<div class="${wait>=10?"late":"waitm"}">In sala da ${wait} min${wait>=10?": prendi la comanda!":""}</div>`:""}
+      ${late?`<div class="late">In ritardo di ${lateMin} min</div>`:""}</div>
+    <div class="btns">${opts.queue?"":`<button class="ckb a" data-ck="${r.id}">${r.arrived?"✓ Arrivato":"Arrivato"}</button>`}
+    <button class="ckb c ${r.comanda?"on2":""}" data-cmd="${r.id}">${r.comanda?"✓ Comanda":"Comanda"}</button>
+    ${opts.queue?`<button class="ckb mini" data-ck="${r.id}">Non arrivato</button>`:""}
+    ${canNS?`<button class="ckb ns" data-ns="${r.id}">No show</button>`:""}</div></div>`;
+}
 function renderArrivals(){
-  const list=orderedRes(), isToday=state.date===iso(new Date()), now=nowMin();
-  if(!list.length && !dayRes().some(r=>r.noshow)){ $("#arrList").innerHTML=`<div class="empty-state">Nessuna prenotazione per questo servizio.<br>Tocca + per aggiungerne una.</div>`; return; }
-  const pending=list.filter(r=>!r.arrived);
-  const totPax=list.reduce((s,r)=>s+(+r.pax||0),0), arrPax=list.filter(r=>r.arrived).reduce((s,r)=>s+(+r.pax||0),0);
+  const all=orderedRes(), isToday=state.date===iso(new Date()), now=nowMin();
+  if(!all.length && !dayRes().some(r=>r.noshow)){ $("#arrList").innerHTML=`<div class="empty-state">Nessuna prenotazione per questo servizio.<br>Tocca + per aggiungerne una.</div>`; return; }
+  const ts=r=>new Date(r.arrivedAt||r.updated||0).getTime();
+  const queue=all.filter(r=>r.arrived && !r.comanda).sort((a,b)=>ts(a)-ts(b));   // in sala, comanda da prendere: chi è arrivato prima, prima
+  const pending=all.filter(r=>!r.arrived);                                         // ancora da arrivare: per orario
+  const done=all.filter(r=>r.comanda).sort((a,b)=>new Date(b.comandaAt||b.updated||0)-new Date(a.comandaAt||a.updated||0));
+  const totPax=all.reduce((s,r)=>s+(+r.pax||0),0), arrPax=all.filter(r=>r.arrived).reduce((s,r)=>s+(+r.pax||0),0);
   let html="";
-  if(!list.length){ html+=`<div class="next done"><div class="nt">–</div><div class="nd"><b>Nessun cliente atteso</b><span>Restano solo i no show</span></div></div>`; }
-  else if(pending.length){
+  // 1. coda delle comande
+  if(queue.length){
+    html+=`<div class="slot qslot"><div class="slothd"><span class="tm">🍽️ Comande da prendere</span><span class="sm">in ordine di arrivo</span></div><div class="list">`+
+      queue.map((r,i)=>arrRow(r,i+1,{queue:true,mark:"C"+(i+1)})).join("")+`</div></div>`;
+  }
+  // 2. prossimi arrivi
+  if(pending.length){
     const n=pending[0], t=arrivalTime(n), diff=tmin(t)-now;
     const when = !isToday ? "primo arrivo" : diff>0 ? `tra ${diff>=60?Math.floor(diff/60)+" h "+(diff%60)+" min":diff+" min"}` : diff===0 ? "adesso" : `in ritardo di ${-diff} min`;
-    html+=`<div class="next"><div class="nt">${t||"--:--"}</div><div class="nd"><b>Prossimo: ${esc(n.cliente)}</b><span>Tav. ${n.tables.map(tname).join(" + ")}, ${n.pax} pers., ${when}</span></div></div>`;
-  } else html+=`<div class="next done"><div class="nt">✓</div><div class="nd"><b>Tutti arrivati</b><span>${arrPax} coperti in sala</span></div></div>`;
-  // gruppi per orario
-  const groups={}; list.forEach((r,i)=>{ const t=arrivalTime(r)||"Senza orario"; (groups[t]=groups[t]||[]).push({r,i:i+1}); });
-  const maxPax=Math.max(...Object.values(groups).map(g=>g.reduce((s,x)=>s+(+x.r.pax||0),0)));
-  Object.entries(groups).forEach(([t,g])=>{
-    const pax=g.reduce((s,x)=>s+(+x.r.pax||0),0);
-    html+=`<div class="slot"><div class="slothd"><span class="tm">${t}</span><span class="sm">${g.length} ${g.length>1?"tavoli":"tavolo"}, ${pax} coperti</span><span class="bar"><i class="${pax>=25?"heavy":""}" style="width:${Math.round(pax/maxPax*100)}%"></i></span></div><div class="list">`+
-      g.map(({r,i})=>{
-        const late = isToday && !r.arrived && tmin(arrivalTime(r))+10<now;
-        const canNS = !r.arrived && (late || state.date<iso(new Date()));
-        const lateMin = now-tmin(arrivalTime(r));
-        return `<div class="ar ${r.arrived?"done":""} ${r.comanda?"cmdd":""} ${late?"isl":""}" data-id="${r.id}" role="button">
-          <div class="on">${i}</div>
-          <div style="min-width:0"><div class="nm">${r.walkin?"🚶":blIcon(r)+(r.banchetto?"🎉":ICO[r.tipo||"mangiano"])} ${esc(r.cliente)}${r.ric?" 🔁":""}</div>
-            <div class="dt">Tav. <b>${r.tables.map(tname).join(" + ")}</b>, ${r.pax} pers.${r.fasce.length>1?", "+fasceLabel(r.fasce):""}</div>
-            ${r.note?`<div class="nt2">${esc(r.note)}</div>`:""}
-            ${late?`<div class="late">In ritardo di ${lateMin} min</div>`:""}</div>
-          <div class="btns"><button class="ckb a" data-ck="${r.id}">${r.arrived?"✓ Arrivato":"Arrivato"}</button>
-          <button class="ckb c ${r.comanda?"on2":""}" data-cmd="${r.id}">${r.comanda?"✓ Comanda":"Comanda"}</button>
-          ${canNS?`<button class="ckb ns" data-ns="${r.id}">No show</button>`:""}</div></div>`;
-      }).join("")+`</div></div>`;
-  });
-  if(list.length) html+=`<div class="sm" style="text-align:center;color:var(--muted);font-size:13px">${list.filter(r=>r.arrived).length} di ${list.length} arrivati, ${list.filter(r=>r.comanda).length} comande prese, ${arrPax} di ${totPax} coperti</div>`;
+    html+=`<div class="next"><div class="nt">${t||"--:--"}</div><div class="nd"><b>Prossimo arrivo: ${esc(n.cliente)}</b><span>Tav. ${n.tables.map(tname).join(" + ")}, ${n.pax} pers., ${when}</span></div></div>`;
+    const om=orderMap();
+    const groups={}; pending.forEach(r=>{ const t=arrivalTime(r)||"Senza orario"; (groups[t]=groups[t]||[]).push(r); });
+    const maxPax=Math.max(...Object.values(groups).map(g=>g.reduce((s,x)=>s+(+x.pax||0),0)));
+    Object.entries(groups).forEach(([t,g])=>{
+      const pax=g.reduce((s,x)=>s+(+x.pax||0),0);
+      html+=`<div class="slot"><div class="slothd"><span class="tm">${t}</span><span class="sm">${g.length} ${g.length>1?"tavoli":"tavolo"}, ${pax} coperti</span><span class="bar"><i class="${pax>=25?"heavy":""}" style="width:${Math.round(pax/maxPax*100)}%"></i></span></div><div class="list">`+
+        g.map(r=>arrRow(r,om[r.id])).join("")+`</div></div>`;
+    });
+  } else if(all.length && !queue.length){
+    html+=`<div class="next done"><div class="nt">✓</div><div class="nd"><b>Tutti serviti</b><span>${arrPax} coperti in sala, tutte le comande prese</span></div></div>`;
+  } else if(all.length){
+    html+=`<div class="sm" style="color:var(--muted);font-size:13px;margin:0 2px 12px">Nessun altro arrivo previsto.</div>`;
+  }
+  // 3. comande prese
+  if(done.length){
+    html+=`<div class="slot"><div class="slothd"><span class="tm" style="font-size:18px">✓ Comanda presa</span><span class="sm">${done.length}</span></div><div class="list">`+
+      done.map(r=>`<div class="ar cmdd compact" data-id="${r.id}" role="button"><div class="on">✓</div><div style="min-width:0"><div class="nm">${r.walkin?"🚶":""} ${esc(r.cliente)}</div><div class="dt">Tav. ${r.tables.map(tname).join(" + ")}, ${r.pax} pers.${r.comandaAt?", comanda alle "+hhmm(r.comandaAt):""}</div></div><button class="ckb c on2" data-cmd="${r.id}">✓ Comanda</button></div>`).join("")+`</div></div>`;
+  }
+  if(all.length) html+=`<div class="sm" style="text-align:center;color:var(--muted);font-size:13px">${all.filter(r=>r.arrived).length} di ${all.length} arrivati, ${done.length} comande prese, ${arrPax} di ${totPax} coperti</div>`;
   const nsl=dayRes().filter(r=>r.noshow);
   if(nsl.length) html+=`<div class="slot"><div class="slothd"><span class="tm" style="font-size:18px">🚫 No show</span><span class="sm">${nsl.length}, tavoli liberati</span></div><div class="list">`+
     nsl.map(r=>`<div class="ar nsr" data-nsid="${r.id}" role="button"><div class="on">✕</div><div style="min-width:0"><div class="nm">${blIcon(r)} ${esc(r.cliente)}</div><div class="dt">Tav. ${r.tables.map(tname).join(" + ")}, ${r.pax} pers.</div></div><button class="ckb" data-unns="${r.id}">Annulla</button></div>`).join("")+`</div></div>`;
@@ -1176,9 +1206,9 @@ $("#arrList").addEventListener("click",e=>{
   if(nsb){ const id=nsb.dataset.ns||nsb.dataset.unns; setNoShow(id, !!nsb.dataset.ns); return; }
   const nsr=e.target.closest("[data-nsid]"); if(nsr){ const r=CACHE.find(x=>x.id===nsr.dataset.nsid); if(r) openSheet(r.tables[0],{res:r}); return; }
   const cm=e.target.closest("[data-cmd]");
-  if(cm){ const r=store.all().find(x=>x.id===cm.dataset.cmd); if(!r) return; r.comanda=!r.comanda; if(r.comanda) r.arrived=true; r.updated=new Date().toISOString(); store.save(r); render(); toast(r.comanda?`Comanda presa: tav. ${r.tables.map(tname).join(" + ")}`:"Comanda tolta"); return; }
+  if(cm){ const r=store.all().find(x=>x.id===cm.dataset.cmd); if(!r) return; r.comanda=!r.comanda; const nowIso=new Date().toISOString(); if(r.comanda){ if(!r.arrived){ r.arrived=true; r.arrivedAt=nowIso; } r.comandaAt=nowIso; } else delete r.comandaAt; r.updated=nowIso; store.save(r); render(); toast(r.comanda?`Comanda presa: tav. ${r.tables.map(tname).join(" + ")}`:"Comanda tolta"); return; }
   const ck=e.target.closest("[data-ck]");
-  if(ck){ const r=store.all().find(x=>x.id===ck.dataset.ck); if(!r) return; r.arrived=!r.arrived; if(!r.arrived) r.comanda=false; r.updated=new Date().toISOString(); store.save(r); render(); toast(r.arrived?`${r.cliente} arrivato`:`${r.cliente} non ancora arrivato`); return; }
+  if(ck){ const r=store.all().find(x=>x.id===ck.dataset.ck); if(!r) return; r.arrived=!r.arrived; if(r.arrived) r.arrivedAt=new Date().toISOString(); else { r.comanda=false; delete r.arrivedAt; delete r.comandaAt; } r.updated=new Date().toISOString(); store.save(r); render(); toast(r.arrived?`${r.cliente} arrivato`:`${r.cliente} non ancora arrivato`); return; }
   const row=e.target.closest(".ar"); if(!row) return;
   const r=dayRes().find(x=>x.id===row.dataset.id); if(!r) return;
   state.fascia=r.fasce[0]; openSheet(r.tables[0]);
@@ -1445,6 +1475,8 @@ function save(){
     cliente, tipo: tipoSel, banchetto: banqSel, menu: banqSel?$("#fMenu").value.trim():"", prezzo: banqSel?(+$("#fPrezzo").value||null):null, acconto: banqSel?(+$("#fAcconto").value||null):null, pax: Math.max(1,+$("#fPax").value||1),
     arrivo: $("#fArrivo").value, tel: $("#fTel").value.trim(),
     note: $("#fNote").value.trim(), arrived: $("#fArr").checked || $("#fCmd").checked, comanda: $("#fCmd").checked,
+    arrivedAt: ($("#fArr").checked||$("#fCmd").checked) ? (e.arrivedAt || new Date().toISOString()) : undefined,
+    comandaAt: $("#fCmd").checked ? (e.comandaAt || new Date().toISOString()) : undefined,
     updated: new Date().toISOString()
   };
   if(r.ric) r.ricMod=true;
@@ -1589,7 +1621,7 @@ $("#wiOk").onclick=()=>{
   const fasce=[f.id];
   if(dayRes().some(r=>!r.noshow && r.tables.includes(n) && r.fasce.includes(f.id))){ $("#wiWarn").textContent=`Il tavolo è già prenotato nella ${f.label}.`; return; }
   const r={ id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), date:state.date, tables:[n], fasce,
-    cliente:"Senza prenotazione", walkin:true, pax:minSeats(n), tipo:"mangiano", arrivo:ora, arrived:true, updated:new Date().toISOString() };
+    cliente:"Senza prenotazione", walkin:true, pax:minSeats(n), tipo:"mangiano", arrivo:ora, arrived:true, arrivedAt:new Date().toISOString(), updated:new Date().toISOString() };
   store.save(r); closeWalkin(); if(state.fascia!==f.id){ state.fascia=f.id; } render();
   toast(`Tavolo ${tname(n)} occupato alle ${ora}`);
 };
