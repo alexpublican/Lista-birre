@@ -122,7 +122,7 @@ export default function PublicMenuDoors() {
           <div className="pt-5">
             <BackLink
               to="/bere"
-              className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#3D3126] px-3 text-sm text-[#DFCFC0] transition-[color,border-color,transform] duration-150 hover:border-[#57422F] hover:text-[#FFF9F2] active:scale-95"
+              className="btn-back"
             >
               <ArrowLeft className="size-4" /> {t("m_drink")}
             </BackLink>
@@ -239,7 +239,7 @@ export default function PublicMenuDoors() {
               <button
                 type="button"
                 onClick={() => go(null)}
-                className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-[#3D3126] px-3 text-sm text-[#DFCFC0] transition-[color,border-color,transform] duration-150 hover:border-[#57422F] hover:text-[#FFF9F2] active:scale-95"
+                className="btn-back"
                 data-testid="sector-back"
               >
                 <ArrowLeft className="size-4" /> {t("all_sectors")}

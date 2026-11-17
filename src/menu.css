@@ -123,9 +123,6 @@
 /* sector */
 .mx .secbar{position:sticky;top:61px;z-index:20;border-bottom:1px solid var(--border);background:rgba(18,16,14,.9);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
 .mx .secbar .r1{display:flex;align-items:center;gap:8px;padding-top:12px}
-.mx .back{display:inline-flex;align-items:center;gap:6px;height:40px;flex:none;border-radius:999px;border:1px solid var(--input);padding:0 12px;font-size:14px;color:#DFCFC0;text-decoration:none;transition:color .15s,border-color .15s,transform .15s}
-.mx .back:hover{border-color:#57422F;color:#FFF9F2}
-.mx .back:active{transform:scale(.95)}
 .mx .tabs{display:flex;gap:6px;overflow-x:auto;flex:1;scrollbar-width:none}
 .mx .tabs::-webkit-scrollbar,.mx .chips::-webkit-scrollbar{display:none}
 .mx .tab{height:40px;flex:none;border-radius:999px;border:1px solid var(--input);padding:0 14px;font-size:14px;font-weight:500;color:var(--mtx);display:inline-flex;align-items:center;text-decoration:none;transition:background-color .15s,color .15s,transform .15s}
@@ -133,6 +130,7 @@
 .mx .tab:active{transform:scale(.95)}
 .mx .tab.on{border-color:var(--c);background:var(--cbg);color:var(--ct)}
 .mx .chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0;scrollbar-width:none;align-items:center}
+/* .mx .back (pulsanti indietro): lo stile è in index.css, insieme a .btn-back */
 .mx .searchbox{position:relative;width:176px;flex:none}
 @media(min-width:640px){.mx .searchbox{width:256px}}
 .mx .searchbox svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dim);font-size:16px;pointer-events:none}

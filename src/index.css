@@ -125,3 +125,65 @@
     height: 2px;
     background: linear-gradient(90deg, #D97706, #F59E0B 40%, transparent);
 }
+
+/* Pulsanti "indietro" (← Home, ← Cosa bere, ← Tutti i settori, …).
+   Stessa misura (alti 40px), stessa forma a pillola e stessi colori di prima,
+   ma con rilievo da vero bottone: luce in alto, bordo inferiore scuro e ombra.
+   Premendolo "scende" come un tasto. Usato da .btn-back e da .mx .back (menu.css). */
+.btn-back,
+.mx .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    flex: none;
+    padding: 0 14px 0 12px;
+    border-radius: 999px;
+    border: 1px solid #4A3B2D;
+    background: linear-gradient(180deg, #2C231C 0%, #1D1712 100%);
+    color: #EADBCB;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 236, 214, 0.12),
+        0 2px 0 #0A0806,
+        0 4px 12px rgba(0, 0, 0, 0.45);
+    transition: color .15s, border-color .15s, background .15s, transform .1s, box-shadow .1s;
+}
+.btn-back svg,
+.mx .back svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    color: #F59E0B;
+    transition: transform .15s;
+}
+.btn-back:hover,
+.mx .back:hover {
+    border-color: #6B5440;
+    color: #FFF9F2;
+    background: linear-gradient(180deg, #352A21 0%, #221B15 100%);
+}
+.btn-back:hover svg,
+.mx .back:hover svg {
+    transform: translateX(-2px);
+}
+.btn-back:active,
+.mx .back:active {
+    transform: translateY(2px);
+    background: linear-gradient(180deg, #1D1712 0%, #251D17 100%);
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.5),
+        0 0 0 #0A0806,
+        0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.btn-back:focus-visible,
+.mx .back:focus-visible {
+    outline: 2px solid #F59E0B;
+    outline-offset: 2px;
+}
