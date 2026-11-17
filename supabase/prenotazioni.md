@@ -11,6 +11,7 @@ non esposto alle API: le tabelle non si leggono né si scrivono direttamente.
 | `prenotazioni.prenotazioni` | una riga per prenotazione: `data` + documento JSON `dati` |
 | `prenotazioni.config` | `versione` (contatore modifiche, per la sincronizzazione) e `chiusure` |
 | `prenotazioni.rubrica` | nomi e note private della rubrica clienti (solo admin) |
+| `prenotazioni.blacklist` | clienti segnalati: chiave = telefono normalizzato (o `nome:<nome>`), elenco no show, note, bloccato |
 | `prenotazioni.ricorrenti` | clienti abituali: giorni, fasce, tavoli; `skip` = date eliminate a mano |
 
 L'app passa solo dalle funzioni `public.pren_*` (security definer), che controllano il token di sessione:
@@ -38,3 +39,12 @@ Ogni regola in `prenotazioni.ricorrenti` genera le prenotazioni delle prossime 8
 le date eliminate a mano (`skip`) e i tavoli già occupati (mostrati come conflitti in `pren_ricorrenti`).
 Una data modificata a mano prende `ricMod: true` e non viene più toccata quando cambia la regola.
 Migrazioni: `prenotazioni_ricorrenti_tabella`, `prenotazioni_ricorrenti_funzioni`.
+
+## No show e black list
+
+`pren_noshow(token, id, vero/falso)` segna il no show su una prenotazione (il tavolo torna libero: le
+prenotazioni con `noshow: true` non contano nei controlli di sovrapposizione) e aggiorna la black list.
+`pren_carica` restituisce anche `blacklist`. Tutti possono segnare no show e aggiungere a mano
+(`pren_blacklist_salva`); solo l'amministratore può togliere qualcuno (`pren_blacklist_rimuovi`).
+Nell'app: 1 no show = avviso giallo, 2 o più (o "bloccato") = avviso rosso quando si inserisce nome o telefono.
+Migrazione: `prenotazioni_blacklist`.

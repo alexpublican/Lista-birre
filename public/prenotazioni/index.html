@@ -414,6 +414,18 @@ body.moving .fab{display:none}
 .rfgrid h5{margin:8px 0 5px;font-size:12.5px;color:var(--muted)}
 .rfgrid .chip{padding:7px 9px;font-size:13.5px;min-width:44px;text-align:center}
 .ric-ico{font-size:.85em}
+.blwarn{border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.35}
+.blwarn b{display:block;font-size:14.5px;margin-bottom:2px}
+.blwarn.red{background:var(--dangerbg);color:var(--dangertext)}
+.blwarn.yellow{background:var(--hot);color:var(--ink)}
+.ckb.ns{border-color:var(--danger);color:var(--danger)}
+.ar.nsr{opacity:.75}
+.ar.nsr .on{background:var(--danger)}
+.blrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:12px;border-top:1px solid var(--line)}
+.blrow:first-child{border-top:0}
+.blrow .nm{font-weight:700}
+.blrow .dt{font-size:13px;color:var(--muted)}
+.blrow .bt{display:flex;gap:6px}
 /* tema: rifiniture */
 h1{font-size:30px;letter-spacing:.01em}
 h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margin-top:3px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--cmd))}
@@ -451,6 +463,7 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
       <label class="mdate">📅 Vai a una data<input type="date" id="date"></label>
       <button id="mStaff" class="hidden">👥 Staff e PIN dei colleghi</button>
       <button id="mRic">🔁 Clienti abituali</button>
+      <button id="mBl">⛔ Black list</button>
       <button id="mPrint">🖨️ Stampa il servizio (copia di emergenza)</button>
       <button id="mPin">🔑 Cambia il mio PIN</button>
       <div class="mnote" id="mWho"></div>
@@ -524,6 +537,7 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
     </div>
     <label class="full">Note<textarea id="fNote" placeholder="Seggiolone, allergie, compleanno…"></textarea></label>
     <div class="warn" id="warn"></div>
+    <div class="full blwarn hidden" id="blWarn"></div>
     <div class="full ricinfo hidden" id="ricInfo"></div>
     <label class="full toggle">Cliente arrivato<input type="checkbox" id="fArr"></label>
     <label class="full toggle">Comanda presa<input type="checkbox" id="fCmd"></label>
@@ -531,6 +545,7 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
   <div class="actions">
     <button class="btn danger hidden" id="del">Elimina</button>
     <button class="btn hidden" id="move">Sposta</button>
+    <button class="btn hidden" id="nsBtn">No show</button>
     <button class="btn" id="cancel">Annulla</button>
     <button class="btn primary" id="save">Salva</button>
   </div>
@@ -625,6 +640,21 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
     </div>
     <div class="actions"><button class="btn danger hidden" id="rfDel">Elimina</button><button class="btn" id="rfBack">Indietro</button><button class="btn primary" id="rfSave">Salva</button></div>
   </div>
+</div>
+<div class="sheet" id="blSheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2>Black list</h2>
+  <div class="hint">Clienti che hanno fatto no show. Dopo 2 no show (o se lo blocchi a mano) l'app avvisa in rosso chi prova a prenotarli; con 1 no show avvisa in giallo. Il no show si segna dalla prenotazione o dal pannello Arrivi.</div>
+  <div id="blItems"></div>
+  <div class="fieldlbl" style="margin-top:14px" id="blFormTitle">Aggiungi a mano</div>
+  <div class="f">
+    <label>Nome<input id="blNome"></label>
+    <label>Telefono<input id="blTel" type="tel" inputmode="tel"></label>
+    <label class="full">Note<input id="blNote" placeholder="Es. non si è presentato a Capodanno con 12 persone"></label>
+    <label class="full toggle">Bloccato (avviso rosso)<input type="checkbox" id="blBlocca" checked></label>
+    <div class="warn" id="blWarnF"></div>
+  </div>
+  <div class="actions"><button class="btn" id="blClose">Chiudi</button><button class="btn primary" id="blSave">Salva</button></div>
 </div>
 <div id="printArea"></div>
 <div class="movebar" id="movebar"><span id="moveTxt"></span><div class="mvb"><button id="moveOk" class="hidden">Conferma</button><button id="moveCancel">Annulla</button></div></div>
@@ -734,6 +764,7 @@ const tname = n => TABLES[n]?.banco ? `Banco ${n.slice(1)}` : TABLES[n]?.label ?
 const SUPA_URL="https://fizctwlkmdngftolwrsd.supabase.co";
 const SUPA_KEY="sb_publishable_ZoTWUkBjXXO-Hvc1oGC5cA_L2VvDSq5";
 let SESS=null; try{ SESS=JSON.parse(localStorage.getItem("pren_sessione")||"null"); }catch(e){}
+let BL={};
 let CACHE=[], VER=-1, RANGE=null, CHIUSURE={dates:{},weekly:{},open:{}}, ONLINE=true;
 async function rpc(fn,args={}){
   let res;
@@ -764,12 +795,12 @@ let OUTBOX=[], LASTSYNC=null, FLUSHING=false, FAILED=[];
 try{ OUTBOX=JSON.parse(localStorage.getItem("pren_outbox")||"[]"); }catch(e){}
 function persistLocal(){
   try{
-    localStorage.setItem("pren_cache",JSON.stringify({CACHE,CHIUSURE,VER,RANGE,LASTSYNC}));
+    localStorage.setItem("pren_cache",JSON.stringify({CACHE,CHIUSURE,VER,RANGE,LASTSYNC,BL}));
     localStorage.setItem("pren_outbox",JSON.stringify(OUTBOX));
   }catch(e){}
 }
 function restoreLocal(){
-  try{ const c=JSON.parse(localStorage.getItem("pren_cache")||"null"); if(c){ CACHE=(c.CACHE||[]).map(normalize); CHIUSURE=c.CHIUSURE||CHIUSURE; VER=c.VER??-1; RANGE=c.RANGE||null; LASTSYNC=c.LASTSYNC||null; } }catch(e){}
+  try{ const c=JSON.parse(localStorage.getItem("pren_cache")||"null"); if(c){ CACHE=(c.CACHE||[]).map(normalize); CHIUSURE=c.CHIUSURE||CHIUSURE; BL=c.BL||{}; VER=c.VER??-1; RANGE=c.RANGE||null; LASTSYNC=c.LASTSYNC||null; } }catch(e){}
 }
 function applyOp(op){
   if(op.op==="save"){ const i=CACHE.findIndex(x=>x.id===op.data.id); if(i>=0) CACHE[i]=op.data; else CACHE.push(op.data); }
@@ -813,7 +844,7 @@ async function loadData(force){
   if(RANGE && !force && want.dal>=RANGE.dal && want.al<=RANGE.al) return;
   const range = RANGE ? {dal: want.dal<RANGE.dal?want.dal:RANGE.dal, al: want.al>RANGE.al?want.al:RANGE.al} : want;
   const d=await rpc("pren_carica",{p_token:SESS.token,p_dal:range.dal,p_al:range.al});
-  RANGE=range; CACHE=(d.prenotazioni||[]).map(normalize); VER=d.versione; CHIUSURE=d.chiusure||CHIUSURE;
+  RANGE=range; CACHE=(d.prenotazioni||[]).map(normalize); VER=d.versione; CHIUSURE=d.chiusure||CHIUSURE; BL=d.blacklist||{};
   OUTBOX.forEach(applyOp); // le modifiche non ancora inviate restano visibili
   LASTSYNC=Date.now(); persistLocal(); renderNet();
 }
@@ -899,7 +930,7 @@ function closedInfo(date,serv){
   if(c.weekly[wk] && !c.open[k]) return {motivo:c.weekly[wk], fixed:true};
   return null;
 }
-function resFor(table,fascia,list){ return (list||dayRes()).find(r=>r.tables.includes(table) && r.fasce.includes(fascia)); }
+function resFor(table,fascia,list){ return (list||dayRes()).find(r=>!r.noshow && r.tables.includes(table) && r.fasce.includes(fascia)); }
 function fasceLabel(f){ return [...f].sort((a,b)=>a-b).map(id=>FASCE_ALL.find(x=>x.id===id)?.short||"?").join("+"); }
 
 const ICO={mangiano:"🍽️",bere:"🍺"};
@@ -908,13 +939,28 @@ function setBanq(v){ banqSel=v; $("#fBanq").classList.toggle("on",v); $("#banqBo
 function banqTotal(){ const p=+$("#fPrezzo").value||0, n=+$("#fPax").value||0, a=+$("#fAcconto").value||0; $("#banqTot").textContent = p? `Totale: € ${(p*n).toFixed(2)} (${n} × € ${p})${a?` · da saldare € ${(p*n-a).toFixed(2)}`:""}` : ""; }
 function setTipo(t){ tipoSel=t; document.querySelectorAll("#fTipo .chip").forEach(b=>b.classList.toggle("on",b.dataset.tipo===t)); }
 const stCls = r => !r ? "" : r.comanda ? "cmd" : r.arrived ? "arr" : "res";
+/* ---------- BLACK LIST ---------- */
+function telKey(t){ return String(t||"").replace(/[^\d+]/g,"").replace(/^\+39/,"").replace(/^0039/,""); }
+function blFind(tel,nome){
+  const k=telKey(tel); if(k && BL[k]) return {k,e:BL[k]};
+  const n=String(nome||"").trim().toLowerCase(); if(!n) return null;
+  if(BL["nome:"+n]) return {k:"nome:"+n,e:BL["nome:"+n]};
+  if(!k){ const hit=Object.entries(BL).find(([kk,e])=>String(e.nome||"").trim().toLowerCase()===n); if(hit) return {k:hit[0],e:hit[1]}; }
+  return null;
+}
+function blLevel(e){ if(!e) return 0; const n=(e.noshow||[]).length; return (e.bloccato||n>=2)?2:(n>=1?1:0); }
+function blIcon(r){ const f=blFind(r.tel,r.cliente); const l=blLevel(f&&f.e); return l===2?"⛔":l===1?"⚠️":""; }
+function blText(e){
+  const ns=e.noshow||[];
+  return `${ns.length} no show${ns.length?` (${ns.slice(-3).map(x=>dIt(x.data)).join(", ")})`:""}${e.note?". "+e.note:""}`;
+}
 /* ---------- RENDER ---------- */
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function renderFasce(){
   $("#fasce").innerHTML = FASCE.map(f=>`<button data-f="${f.id}" class="${f.id===state.fascia?"on":""}">${f.time.replace(" – fine"," →")}<small>${f.label}</small></button>`).join("");
 }
 function renderStats(){
-  const list=dayRes().filter(r=>r.fasce.includes(state.fascia));
+  const list=dayRes().filter(r=>!r.noshow && r.fasce.includes(state.fascia));
   const pax=list.reduce((s,r)=>s+(+r.pax||0),0);
   const paxM=list.filter(r=>(r.tipo||"mangiano")==="mangiano").reduce((s,r)=>s+(+r.pax||0),0);
   const arr=list.filter(r=>r.arrived).length;
@@ -944,7 +990,7 @@ function tablesHTML(room,list){
     if(state.move){ const m=state.move; if(m.multi){ mv = m.sel.includes(t.n) ? " msel" : (r && r.id===m.id) ? " mfrom" : moveOk(t.n)?" mok":" mno"; } else if(r && r.id===m.id) mv = t.n===m.from?" mfrom":" mmine"; else mv = moveOk(t.n)?" mok":" mno"; }
     return `<button class="t ${cls} ${t.botte?"botte":""} ${t.banco?"banco":""}${mv}${r&&r.banchetto?" banq":""}" data-t="${t.n}" style="left:${t.x}%;top:${t.y}%;width:${t.w}%;height:${t.h}%">
       ${r?`<span class="ord">${om[r.id]}</span>`:""}<span class="num">${t.label?esc(t.label):t.n}${r?` <span class="ico">${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]}</span>`:""}</span>
-      ${r?`<span class="who">${r.ric?"🔁":""}${multi?"🔗":""}${esc(r.cliente)} · ${r.pax}</span>`
+      ${r?`<span class="who">${blIcon(r)}${r.ric?"🔁":""}${multi?"🔗":""}${esc(r.cliente)} · ${r.pax}</span>`
          :`<span class="seats">${t.label?"tav. "+t.n+" · ":""}${t.seats} ${t.seats==="1"?"posto":"posti"}</span>`}
     </button>`;
   }).join("");
@@ -986,7 +1032,7 @@ function renderList(){
       return `<button class="li ${stCls(r)}" data-t="${t.n}">
         <div class="badge">${t.n}<small>${t.seats}p</small></div>
         <div class="main">
-          ${r?`<div class="name">${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]} ${esc(r.cliente)}${r.ric?' <span class="ric-ico">🔁</span>':""}</div><div class="sub">${sub||"&nbsp;"}</div>${r.banchetto&&r.menu&&t.n===r.tables[0]?`<div class="menu-pre">${esc(r.menu)}${r.prezzo?`\n€ ${r.prezzo} a persona${r.acconto?` · acconto € ${r.acconto}`:""}`:""}</div>`:""}`
+          ${r?`<div class="name">${blIcon(r)}${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]} ${esc(r.cliente)}${r.ric?' <span class="ric-ico">🔁</span>':""}</div><div class="sub">${sub||"&nbsp;"}</div>${r.banchetto&&r.menu&&t.n===r.tables[0]?`<div class="menu-pre">${esc(r.menu)}${r.prezzo?`\n€ ${r.prezzo} a persona${r.acconto?` · acconto € ${r.acconto}`:""}`:""}</div>`:""}`
              :`<div class="name empty">Libero${t.label?" · "+esc(t.label):""}</div><div class="sub">Tocca per prenotare</div>`}
         </div>
         <div class="right">${r?`<b>${r.pax} pax</b>${r.arrivo||""}${r.fasce.length>1?`<div class="link">${fasceLabel(r.fasce)}</div>`:""}`:""}</div>
@@ -1026,7 +1072,7 @@ function render(){
 /* ---------- SETTIMANA ---------- */
 const GG=["Dom","Lun","Mar","Mer","Gio","Ven","Sab"];
 function weekDays(d){ const dt=pd(d); const off=(dt.getDay()+6)%7; const mon=new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()-off); return [...Array(7)].map((_,i)=>iso(new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+i))); }
-function dayInfo(list){ return {n:list.length, pax:list.reduce((s,r)=>s+(+r.pax||0),0), banq:list.some(r=>r.banchetto)}; }
+function dayInfo(list){ list=list.filter(r=>!r.noshow); return {n:list.length, pax:list.reduce((s,r)=>s+(+r.pax||0),0), banq:list.some(r=>r.banchetto)}; }
 function slots(days){ const out=[]; days.forEach(d=>{ if(isSunday(d)) out.push({d,s:"pranzo"}); out.push({d,s:"sera"}); }); return out; }
 function renderWeekStrip(){
   const days=weekDays(state.date), all=store.all(), today=iso(new Date());
@@ -1057,7 +1103,7 @@ function renderWeekGrid(){
     if(cl){ html+=`<button class="wc wcl" data-d="${d}" data-s="${s}" data-f="${fs[0].id}"><div class="cnt">🔒 Chiuso</div><div class="nm">${esc(cl.motivo||"")}${cl.fixed?" · fissa":""}${di.n?` · ⚠️ ${di.n} pren.`:""}</div></button></div>`; return; }
     html+=[0,1,2].map(i=>{
       const f=fs[i]; if(!f) return `<div class="wc empty" style="background:#faf8f4"></div>`;
-      const l=dl.filter(r=>r.fasce.includes(f.id)); const inf=dayInfo(l);
+      const l=dl.filter(r=>!r.noshow && r.fasce.includes(f.id)); const inf=dayInfo(l);
       const names=l.slice(0,3).map(r=>`<div class="nm">${r.banchetto?"🎉 ":""}${esc(r.cliente)} · ${r.pax}</div>`).join("") + (l.length>3?`<div class="nm">+${l.length-3} altri</div>`:"");
       return `<button class="wc ${l.length?"":"empty"} ${inf.pax>=60?"hot":""}" data-d="${d}" data-s="${s}" data-f="${f.id}">
         <div class="ft">${f.time}</div><div class="cnt">${l.length?`${inf.pax} <small>cop. · ${l.length} pren.</small>`:"—"}</div>${names}</button>`;
@@ -1073,16 +1119,17 @@ $("#weekGrid").addEventListener("click",e=>{ const b=e.target.closest(".wc"); if
 /* ---------- ORDINE D'ARRIVO ---------- */
 const tmin=t=>{ if(!t) return 9999; const [h,m]=t.split(":").map(Number); return h*60+m; };
 function arrivalTime(r){ return r.arrivo || FASCE_ALL.find(f=>f.id===Math.min(...r.fasce))?.start || ""; }
-function orderedRes(){ return dayRes().slice().sort((a,b)=>tmin(arrivalTime(a))-tmin(arrivalTime(b)) || (a.updated||"").localeCompare(b.updated||"")); }
+function orderedRes(){ return dayRes().filter(r=>!r.noshow).sort((a,b)=>tmin(arrivalTime(a))-tmin(arrivalTime(b)) || (a.updated||"").localeCompare(b.updated||"")); }
 function orderMap(){ const m={}; orderedRes().forEach((r,i)=>m[r.id]=i+1); return m; }
 function nowMin(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
 function renderArrivals(){
   const list=orderedRes(), isToday=state.date===iso(new Date()), now=nowMin();
-  if(!list.length){ $("#arrList").innerHTML=`<div class="empty-state">Nessuna prenotazione per questo servizio.<br>Tocca + per aggiungerne una.</div>`; return; }
+  if(!list.length && !dayRes().some(r=>r.noshow)){ $("#arrList").innerHTML=`<div class="empty-state">Nessuna prenotazione per questo servizio.<br>Tocca + per aggiungerne una.</div>`; return; }
   const pending=list.filter(r=>!r.arrived);
   const totPax=list.reduce((s,r)=>s+(+r.pax||0),0), arrPax=list.filter(r=>r.arrived).reduce((s,r)=>s+(+r.pax||0),0);
   let html="";
-  if(pending.length){
+  if(!list.length){ html+=`<div class="next done"><div class="nt">–</div><div class="nd"><b>Nessun cliente atteso</b><span>Restano solo i no show</span></div></div>`; }
+  else if(pending.length){
     const n=pending[0], t=arrivalTime(n), diff=tmin(t)-now;
     const when = !isToday ? "primo arrivo" : diff>0 ? `tra ${diff>=60?Math.floor(diff/60)+" h "+(diff%60)+" min":diff+" min"}` : diff===0 ? "adesso" : `in ritardo di ${-diff} min`;
     html+=`<div class="next"><div class="nt">${t||"--:--"}</div><div class="nd"><b>Prossimo: ${esc(n.cliente)}</b><span>Tav. ${n.tables.map(tname).join(" + ")}, ${n.pax} pers., ${when}</span></div></div>`;
@@ -1095,21 +1142,29 @@ function renderArrivals(){
     html+=`<div class="slot"><div class="slothd"><span class="tm">${t}</span><span class="sm">${g.length} ${g.length>1?"tavoli":"tavolo"}, ${pax} coperti</span><span class="bar"><i class="${pax>=25?"heavy":""}" style="width:${Math.round(pax/maxPax*100)}%"></i></span></div><div class="list">`+
       g.map(({r,i})=>{
         const late = isToday && !r.arrived && tmin(arrivalTime(r))+10<now;
+        const canNS = !r.arrived && (late || state.date<iso(new Date()));
         const lateMin = now-tmin(arrivalTime(r));
         return `<div class="ar ${r.arrived?"done":""} ${r.comanda?"cmdd":""} ${late?"isl":""}" data-id="${r.id}" role="button">
           <div class="on">${i}</div>
-          <div style="min-width:0"><div class="nm">${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]} ${esc(r.cliente)}${r.ric?" 🔁":""}</div>
+          <div style="min-width:0"><div class="nm">${blIcon(r)}${r.banchetto?"🎉":ICO[r.tipo||"mangiano"]} ${esc(r.cliente)}${r.ric?" 🔁":""}</div>
             <div class="dt">Tav. <b>${r.tables.map(tname).join(" + ")}</b>, ${r.pax} pers.${r.fasce.length>1?", "+fasceLabel(r.fasce):""}</div>
             ${r.note?`<div class="nt2">${esc(r.note)}</div>`:""}
             ${late?`<div class="late">In ritardo di ${lateMin} min</div>`:""}</div>
           <div class="btns"><button class="ckb a" data-ck="${r.id}">${r.arrived?"✓ Arrivato":"Arrivato"}</button>
-          <button class="ckb c ${r.comanda?"on2":""}" data-cmd="${r.id}">${r.comanda?"✓ Comanda":"Comanda"}</button></div></div>`;
+          <button class="ckb c ${r.comanda?"on2":""}" data-cmd="${r.id}">${r.comanda?"✓ Comanda":"Comanda"}</button>
+          ${canNS?`<button class="ckb ns" data-ns="${r.id}">No show</button>`:""}</div></div>`;
       }).join("")+`</div></div>`;
   });
-  html+=`<div class="sm" style="text-align:center;color:var(--muted);font-size:13px">${list.filter(r=>r.arrived).length} di ${list.length} arrivati, ${list.filter(r=>r.comanda).length} comande prese, ${arrPax} di ${totPax} coperti</div>`;
+  if(list.length) html+=`<div class="sm" style="text-align:center;color:var(--muted);font-size:13px">${list.filter(r=>r.arrived).length} di ${list.length} arrivati, ${list.filter(r=>r.comanda).length} comande prese, ${arrPax} di ${totPax} coperti</div>`;
+  const nsl=dayRes().filter(r=>r.noshow);
+  if(nsl.length) html+=`<div class="slot"><div class="slothd"><span class="tm" style="font-size:18px">🚫 No show</span><span class="sm">${nsl.length}, tavoli liberati</span></div><div class="list">`+
+    nsl.map(r=>`<div class="ar nsr" data-nsid="${r.id}" role="button"><div class="on">✕</div><div style="min-width:0"><div class="nm">${blIcon(r)} ${esc(r.cliente)}</div><div class="dt">Tav. ${r.tables.map(tname).join(" + ")}, ${r.pax} pers.</div></div><button class="ckb" data-unns="${r.id}">Annulla</button></div>`).join("")+`</div></div>`;
   $("#arrList").innerHTML=html;
 }
 $("#arrList").addEventListener("click",e=>{
+  const nsb=e.target.closest("[data-ns],[data-unns]");
+  if(nsb){ const id=nsb.dataset.ns||nsb.dataset.unns; setNoShow(id, !!nsb.dataset.ns); return; }
+  const nsr=e.target.closest("[data-nsid]"); if(nsr){ const r=CACHE.find(x=>x.id===nsr.dataset.nsid); if(r) openSheet(r.tables[0],{res:r}); return; }
   const cm=e.target.closest("[data-cmd]");
   if(cm){ const r=store.all().find(x=>x.id===cm.dataset.cmd); if(!r) return; r.comanda=!r.comanda; if(r.comanda) r.arrived=true; r.updated=new Date().toISOString(); store.save(r); render(); toast(r.comanda?`Comanda presa: tav. ${r.tables.map(tname).join(" + ")}`:"Comanda tolta"); return; }
   const ck=e.target.closest("[data-ck]");
@@ -1210,12 +1265,43 @@ $("#ricInfo").addEventListener("click",async e=>{
   else { try{ RIC=await rpc("pren_ricorrenti",{p_token:SESS.token}); const r=RIC.find(x=>x.id===cur.ric); if(r) ricOpenForm(r); else ricShowList(); }catch(err){ ricShowList(); } }
 });
 
+/* ---------- BLACK LIST: elenco ---------- */
+let blEdit=null;
+function openBl(){ $("#menu").classList.add("hidden"); $("#scrim").classList.add("on"); $("#blSheet").classList.add("on"); blEdit=null; blFormReset(); renderBl(); }
+function blFormReset(){ $("#blNome").value=""; $("#blTel").value=""; $("#blNote").value=""; $("#blBlocca").checked=true; $("#blWarnF").textContent=""; $("#blFormTitle").textContent="Aggiungi a mano"; $("#blSave").textContent="Salva"; }
+function renderBl(){
+  const items=Object.entries(BL).map(([k,e])=>({k,e,l:blLevel(e)})).filter(x=>x.l>0||x.e.bloccato===false&&(x.e.noshow||[]).length)
+    .sort((a,b)=>b.l-a.l || (b.e.noshow||[]).length-(a.e.noshow||[]).length);
+  $("#blItems").innerHTML = items.length ? `<div class="list">`+items.map(({k,e,l})=>`<div class="blrow">
+    <div><div class="nm">${l===2?"⛔":"⚠️"} ${esc(e.nome||"")}</div><div class="dt">${esc(e.tel||"senza telefono")}, ${esc(blText(e))}</div></div>
+    <div class="bt"><button class="ckb" data-ble="${esc(k)}">Modifica</button>${SESS.ruolo==="admin"?`<button class="ckb ns" data-blr="${esc(k)}">Togli</button>`:""}</div></div>`).join("")+`</div>`
+    : `<div class="empty-state">Nessun cliente in black list.</div>`;
+}
+$("#mBl").onclick=openBl;
+$("#blClose").onclick=()=>{ $("#blSheet").classList.remove("on"); $("#scrim").classList.remove("on"); };
+$("#blItems").addEventListener("click",async e=>{
+  const ed=e.target.closest("[data-ble]");
+  if(ed){ const k=ed.dataset.ble, x=BL[k]; blEdit=k; $("#blNome").value=x.nome||""; $("#blTel").value=x.tel||""; $("#blNote").value=x.note||""; $("#blBlocca").checked=!!x.bloccato||(x.noshow||[]).length>=2; $("#blFormTitle").textContent="Modifica "+(x.nome||""); $("#blSave").textContent="Salva modifiche"; $("#blNome").focus(); return; }
+  const rm=e.target.closest("[data-blr]");
+  if(rm){ if(rm.dataset.armed!=="1"){ rm.dataset.armed="1"; rm.textContent="Conferma"; return; }
+    try{ await rpc("pren_blacklist_rimuovi",{p_token:SESS.token,p_chiave:rm.dataset.blr}); await loadData(true); render(); renderBl(); toast("Tolto dalla black list"); }
+    catch(err){ toast(err.message==="OFFLINE"?"Serve internet":errMsg(err)); } }
+});
+$("#blSave").onclick=async()=>{
+  const nome=$("#blNome").value.trim(), tel=$("#blTel").value.trim();
+  if(!nome && !tel){ $("#blWarnF").textContent="Inserisci almeno nome o telefono."; return; }
+  try{
+    await rpc("pren_blacklist_salva",{p_token:SESS.token,p_chiave:blEdit||"",p_dati:{nome,tel,note:$("#blNote").value.trim(),bloccato:$("#blBlocca").checked}});
+    await loadData(true); render(); blEdit=null; blFormReset(); renderBl(); toast("Black list aggiornata");
+  }catch(err){ $("#blWarnF").textContent = err.message==="OFFLINE" ? "Serve internet per salvare." : errMsg(err); }
+};
+
 /* ---------- EDITOR ---------- */
 let delArmed=false, pickerOpen=false;
 function fmtDate(d){ const [y,m,dd]=d.split("-"); return new Date(+y,m-1,+dd).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"}); }
 function conflicts(tables,fasce){ // altre prenotazioni che si sovrappongono
   const id=state.editing?.id;
-  return dayRes().filter(r=>r.id!==id && r.tables.some(t=>tables.includes(t)) && r.fasce.some(f=>fasce.includes(f)));
+  return dayRes().filter(r=>r.id!==id && !r.noshow && r.tables.some(t=>tables.includes(t)) && r.fasce.some(f=>fasce.includes(f)));
 }
 function isBusy(n){ const e=state.editing; return conflicts([n],e.fasce).length>0; }
 function capText(){
@@ -1292,7 +1378,7 @@ function renderEditor(){
 }
 function openSheet(tableN, opts={}){
   if(closedInfo(state.date,state.serv) && !(tableN && resFor(tableN,state.fascia))){ toast("Giorno chiuso: riaprilo per prenotare"); return; }
-  const r=tableN?resFor(tableN,state.fascia):null;
+  const r=opts.res || (tableN?resFor(tableN,state.fascia):null);
   state.editing = r ? JSON.parse(JSON.stringify(r)) : {id:null, tables:tableN?[tableN]:[], fasce:[state.fascia]};
   state.editing._from = tableN;
   pickerOpen=!tableN; delArmed=false;
@@ -1307,6 +1393,9 @@ function openSheet(tableN, opts={}){
   $("#fMenu").value=r?.menu||""; $("#fPrezzo").value=r?.prezzo||""; $("#fAcconto").value=r?.acconto||"";
   setBanq(!!r?.banchetto || !!opts.banq);
   $("#del").classList.toggle("hidden",!r);
+  $("#nsBtn").classList.toggle("hidden",!r || r.arrived);
+  $("#nsBtn").textContent = r&&r.noshow ? "Annulla no show" : "🚫 No show";
+  blCheck();
   const ri=$("#ricInfo");
   if(r && r.ric){ ri.innerHTML=`<span>🔁 Cliente abituale. Le modifiche qui valgono solo per questa data.</span><button type="button" class="btn" data-act="edit">Gestisci</button>`; ri.classList.remove("hidden"); }
   else if(r){ ri.innerHTML=`<span>Torna spesso?</span><button type="button" class="btn" data-act="new">🔁 Rendi abituale</button>`; ri.classList.remove("hidden"); }
@@ -1351,6 +1440,28 @@ function save(){
   if(r.ric) r.ricMod=true;
   store.save(r); closeSheet(); render(); toast(ONLINE?"Prenotazione salvata":"Salvata sul telefono: partirà appena torna internet");
 }
+
+/* ---------- NO SHOW ---------- */
+async function setNoShow(id,val){
+  try{
+    await rpc("pren_noshow",{p_token:SESS.token,p_id:id,p_valore:val});
+    await loadData(true); render();
+    const r=CACHE.find(x=>x.id===id);
+    if(val && r){ const f=blFind(r.tel,r.cliente); const n=(f&&f.e.noshow||[]).length;
+      toast(n>=2?`${r.cliente}: ${n}° no show, ora è in black list ⛔`:`${r.cliente} segnato come no show, tavolo liberato`); }
+    else toast("No show annullato");
+  }catch(e){ toast(e.message==="OFFLINE"?"Serve internet per segnare il no show":errMsg(e)); }
+}
+function blCheck(){
+  const el=$("#blWarn"); if(!el) return;
+  const f=blFind($("#fTel").value,$("#fCliente").value); const l=blLevel(f&&f.e);
+  if(!l){ el.classList.add("hidden"); return; }
+  el.className="full blwarn "+(l===2?"red":"yellow");
+  el.innerHTML = l===2 ? `<b>⛔ Cliente in black list</b>${esc(blText(f.e))}. Valuta di chiedere una caparra o di non accettare.`
+                       : `<b>⚠️ Ha già fatto un no show</b>${esc(blText(f.e))}.`;
+}
+["#fTel","#fCliente"].forEach(x=>$(x).addEventListener("input",blCheck));
+$("#nsBtn").onclick=()=>{ const e=state.editing; if(!e?.id) return; const val=!e.noshow; closeSheet(); setNoShow(e.id,val); };
 
 /* ---------- SPOSTA ---------- */
 function moveRes(){ return dayRes().find(r=>r.id===state.move?.id); }
@@ -1442,7 +1553,7 @@ $("#date").addEventListener("change",e=>{ if(e.target.value){state.date=e.target
 const shift=n=>{const [y,m,d]=state.date.split("-").map(Number); state.date=iso(new Date(y,m-1,d+n)); render();};
 $("#prev").onclick=()=>shift(-7); $("#next").onclick=()=>shift(7);
 $("#today").onclick=()=>{state.date=iso(new Date()); render();};
-$("#scrim").onclick=()=>{ closeSheet(); closeClose(); $("#staffSheet").classList.remove("on"); $("#pinSheet").classList.remove("on"); $("#ricSheet").classList.remove("on"); }; $("#cancel").onclick=closeSheet; $("#save").onclick=save;
+$("#scrim").onclick=()=>{ closeSheet(); closeClose(); $("#staffSheet").classList.remove("on"); $("#pinSheet").classList.remove("on"); $("#ricSheet").classList.remove("on"); $("#blSheet").classList.remove("on"); }; $("#cancel").onclick=closeSheet; $("#save").onclick=save;
 $("#form").addEventListener("submit",e=>{e.preventDefault(); save();});
 $("#paxMinus").onclick=()=>{$("#fPax").value=Math.max(1,(+$("#fPax").value||1)-1); renderEditor(); banqTotal();};
 $("#paxPlus").onclick=()=>{$("#fPax").value=(+$("#fPax").value||0)+1; renderEditor(); banqTotal();};
@@ -1505,7 +1616,7 @@ function contacts(){
     c.pax = c.res.reduce((s,r)=>s+(+r.pax||0),0);
     c.banq = c.res.filter(r=>r.banchetto).length;
     c.bere = c.res.filter(r=>r.tipo==="bere").length;
-    c.noshow = past.filter(r=>r.date<today && !r.arrived).length;
+    c.noshow = c.res.filter(r=>r.noshow).length;
     return c;
   }).sort((a,b)=>(b.last||b.next||"").localeCompare(a.last||a.next||""));
 }
@@ -1732,7 +1843,7 @@ $("#mPrint").onclick=()=>{
   let html=`<h1>Prenotazioni ${pd(state.date).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</h1>
     <div class="pm">Copia di emergenza stampata alle ${hhmm(Date.now())} da ${esc(SESS?.nome||"")}. Dati aggiornati alle ${hhmm(LASTSYNC)}.</div>`;
   servs.forEach(sv=>{
-    const list=slotRes(state.date,sv).sort((a,b)=>tmin(arrivalTime(a))-tmin(arrivalTime(b)));
+    const list=slotRes(state.date,sv).filter(r=>!r.noshow).sort((a,b)=>tmin(arrivalTime(a))-tmin(arrivalTime(b)));
     const pax=list.reduce((t,r)=>t+(+r.pax||0),0);
     html+=`<h2>${sv==="pranzo"?"Pranzo":"Sera"}: ${list.length} prenotazioni, ${pax} coperti</h2>`;
     html+= list.length ? `<table><tr><th>#</th><th>Ora</th><th>Tavoli</th><th>Cliente</th><th>Pers.</th><th>Telefono</th><th>Note</th><th class="pck">Arr.</th><th class="pck">Com.</th></tr>`+
