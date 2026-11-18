@@ -55,3 +55,7 @@ Migrazione: `prenotazioni_blacklist`.
 passate e future e restituisce nome, telefono, visite e ultima data (max 8). Le note della rubrica non
 vengono mai restituite; i contatti aggiunti solo in rubrica compaiono soltanto all'amministratore.
 Migrazione: `prenotazioni_cerca_cliente`.
+
+## Stagioni
+
+La stagione attiva (Invernale: Sala 1, Sala 2, Veranda; Estivo: Biergarten, Veranda) è salvata nel campo `stagione` di `config.chiusure`, quindi vale per tutto lo staff. Le sale sono definite in `STAGIONI` nella pagina.

@@ -469,6 +469,12 @@ body.moving .fab,body.vspec .fab{display:none}
 .sprowed input{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--paper);color:var(--ink);font-size:16px;width:100%}
 .sprowed .desc{grid-column:1 / span 2}
 .sprowed .rm{height:42px;border-radius:10px;background:var(--dangerbg);color:var(--danger);font-weight:700}
+.season{display:flex;gap:6px;margin-bottom:10px}
+.season button{flex:1;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:7px 8px;font-weight:700;font-size:14.5px;line-height:1.15;color:var(--muted)}
+.season button small{display:block;font-weight:500;font-size:11px;margin-top:2px}
+.season button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.offrooms{background:var(--hot);border-radius:12px;padding:9px 12px;font-size:13px;margin-bottom:10px}
+.allgrid .r3{display:grid;grid-template-columns:minmax(0,34%);justify-content:center}
 /* tema: rifiniture */
 h1{font-size:30px;letter-spacing:.01em}
 h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margin-top:3px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--cmd))}
@@ -528,6 +534,8 @@ h1::after{content:"";display:block;width:34px;height:3px;border-radius:2px;margi
   <div class="stats" id="stats"></div>
 
 <section id="mapView">
+    <div class="season" id="season"></div>
+    <div class="offrooms hidden" id="offRooms"></div>
     <div class="tabs" id="rooms"></div>
     <div class="floor" id="floor"></div>
     <div class="legend"><span><i class="lf"></i>Libero</span><span><i class="lr"></i>Prenotato</span><span><i class="la"></i>Arrivato</span><span><i class="lc"></i>Comanda presa</span><span><i class="lb"></i>Banchetto</span><span>3 tocchi su un tavolo libero = occupato senza prenotazione 🚶</span></div>
@@ -824,6 +832,15 @@ const JOIN = [["101","1001"],["102","1002"],["104","1004"],["105","1005"],["106"
   ["8","80"],["9","90"],["10","100"],["11","110"],["23","230"],["24","240"],["B1","B2","B3","B4"]];
 const JOIN_OF = {}; JOIN.forEach((g,i)=>g.forEach(n=>JOIN_OF[n]=i));
 const TABLES = {}; ROOMS.forEach(r=>r.tables.forEach(t=>{TABLES[t.n]={...t, room:r.id, roomName:r.name}}));
+/* ---------- STAGIONI: quali sale si usano ---------- */
+const STAGIONI = {
+  inverno: {nome:"Invernale", ico:"❄️", sale:["sala1","sala2","veranda"]},
+  estate:  {nome:"Estivo",    ico:"☀️", sale:["biergarten","veranda"]}
+};
+function stagione(){ const s=(typeof CHIUSURE!=="undefined"&&CHIUSURE&&CHIUSURE.stagione); if(STAGIONI[s]) return s; const m=new Date().getMonth()+1; return (m>=5&&m<=9)?"estate":"inverno"; }
+const AR = () => ROOMS.filter(r=>STAGIONI[stagione()].sale.includes(r.id));
+const ON = n => !!TABLES[n] && STAGIONI[stagione()].sale.includes(TABLES[n].room);
+const activeTables = () => Object.keys(TABLES).filter(ON);
 // ordine come sul foglio: 101, 1001, 102, 1002…
 const tkey = n => { if(TABLES[n]?.ext) return tkey(TABLES[n].ext)+1; const v=+n; if(isNaN(v)) return 1e6+(parseInt(String(n).replace(/\D/g,''))||0); return v>=1000 ? (v-900)*10+1 : v*10; };
 const sorted = arr => [...arr].sort((a,b)=>tkey(a.n)-tkey(b.n));
@@ -995,7 +1012,7 @@ function syncServ(){
 }
 /* ---------- CHIUSURE ---------- */
 const CL_KEY="chiusure_v1";
-function clData(){ const c=JSON.parse(JSON.stringify(CHIUSURE||{})); return {dates:c.dates||{}, weekly:c.weekly||{}, open:c.open||{}}; }
+function clData(){ const c=JSON.parse(JSON.stringify(CHIUSURE||{})); return {dates:c.dates||{}, weekly:c.weekly||{}, open:c.open||{}, ...(c.stagione?{stagione:c.stagione}:{})}; }
 function clSave(c){ queue({op:"chiusure", data:c}); }
 function closedInfo(date,serv){
   const c=clData(), k=date+"|"+serv;
@@ -1038,8 +1055,8 @@ function renderStats(){
   const pax=list.reduce((s,r)=>s+(+r.pax||0),0);
   const paxM=list.filter(r=>(r.tipo||"mangiano")==="mangiano").reduce((s,r)=>s+(+r.pax||0),0);
   const arr=list.filter(r=>r.arrived).length;
-  const busy=new Set(list.flatMap(r=>r.tables)).size;
-  const tot=Object.keys(TABLES).length;
+  const busy=new Set(list.flatMap(r=>r.tables).filter(ON)).size;
+  const tot=activeTables().length;
   $("#stats").innerHTML=`
     <div class="stat"><b>${pax}</b><span>coperti${pax-paxM?` (🍺 ${pax-paxM})`:""}</span></div>
     <div class="stat"><b>${arr}/${list.length}</b><span>arrivati</span></div>
@@ -1049,10 +1066,16 @@ function renderStats(){
 function roomCount(room,list){ return room.tables.filter(t=>resFor(t.n,state.fascia,list)).length; }
 function renderRooms(){
   const list=dayRes();
-  const busy=new Set(list.filter(r=>r.fasce.includes(state.fascia)).flatMap(r=>r.tables)).size;
+  if(state.room!=="all" && !AR().some(r=>r.id===state.room)) state.room="all";
+  const busy=new Set(list.filter(r=>!r.noshow && r.fasce.includes(state.fascia)).flatMap(r=>r.tables).filter(ON)).size;
+  const st=stagione();
+  $("#season").innerHTML=Object.entries(STAGIONI).map(([k,v])=>`<button data-st="${k}" class="${k===st?"on":""}">${v.ico} ${v.nome}<small>${v.sale.map(id=>ROOMS.find(r=>r.id===id).name).join(", ")}</small></button>`).join("");
+  const off=list.filter(r=>!r.noshow && r.tables.some(t=>!ON(t)));
+  $("#offRooms").innerHTML = off.length ? `⚠️ ${off.length} ${off.length>1?"prenotazioni":"prenotazione"} in sale non attive in questa stagione (${[...new Set(off.flatMap(r=>r.tables).filter(t=>!ON(t)).map(t=>TABLES[t].roomName))].join(", ")}): ${off.slice(0,3).map(r=>esc(r.cliente)).join(", ")}${off.length>3?"…":""}. Spostale o passa all'altra stagione.` : "";
+  $("#offRooms").classList.toggle("hidden",!off.length);
   $("#rooms").innerHTML =
-    `<button class="tab ${state.room==="all"?"on":""}" data-r="all">Tutte<span class="n">${busy}/${Object.keys(TABLES).length}</span></button>` +
-    ROOMS.map(r=>`<button class="tab ${r.id===state.room?"on":""}" data-r="${r.id}">${r.name}<span class="n">${roomCount(r,list)}/${r.tables.length}</span></button>`).join("");
+    `<button class="tab ${state.room==="all"?"on":""}" data-r="all">Tutte<span class="n">${busy}/${activeTables().length}</span></button>` +
+    AR().map(r=>`<button class="tab ${r.id===state.room?"on":""}" data-r="${r.id}">${r.name}<span class="n">${roomCount(r,list)}/${r.tables.length}</span></button>`).join("");
 }
 function tablesHTML(room,list){
   const om=orderMap();
@@ -1077,13 +1100,16 @@ function renderFloor(){
     floor.className=""; floor.removeAttribute("style");
     const block=r=>`<div class="mini"><h4 data-r="${r.id}">${r.name}<span>${roomCount(r,list)}/${r.tables.length}</span></h4>
       <div class="floor" style="aspect-ratio:1 / ${r.ratio}">${tablesHTML(r,list)}</div></div>`;
-    const R=id=>ROOMS.find(r=>r.id===id);
-    floor.innerHTML=`<div class="allgrid">
-      <div class="r1">${block(R("sala1"))}${block(R("sala2"))}</div>
-      <div class="r2">${block(R("veranda"))}${block(R("biergarten"))}</div></div>`;
+    const R=id=>ROOMS.find(r=>r.id===id), has=id=>AR().some(r=>r.id===id);
+    let rows="";
+    if(has("sala1")||has("sala2")) rows+=`<div class="r1">${has("sala1")?block(R("sala1")):""}${has("sala2")?block(R("sala2")):""}</div>`;
+    if(has("veranda")&&has("biergarten")) rows+=`<div class="r2">${block(R("veranda"))}${block(R("biergarten"))}</div>`;
+    else if(has("veranda")) rows+=`<div class="r3">${block(R("veranda"))}</div>`;
+    else if(has("biergarten")) rows+=`<div>${block(R("biergarten"))}</div>`;
+    floor.innerHTML=`<div class="allgrid">${rows}</div>`;
     return;
   }
-  const room=ROOMS.find(r=>r.id===state.room);
+  const room=AR().find(r=>r.id===state.room)||AR()[0];
   floor.className="floor"+(room.narrow?" single-narrow":"");
   floor.style.aspectRatio = `1 / ${room.ratio}`;
   floor.innerHTML=tablesHTML(room,list);
@@ -1093,7 +1119,7 @@ function renderList(){
   const only=$("#onlyRes").checked;
   const list=dayRes();
   let html="";
-  ROOMS.forEach(room=>{
+  AR().forEach(room=>{
     const rows=sorted(room.tables).map(t=>({t, r:resFor(t.n,state.fascia,list)}))
       .filter(({t,r})=>{
         if(only && !r) return false;
@@ -1468,6 +1494,13 @@ $("#spSave").onclick=()=>{
   closeSpecEditor(); renderSpec(); toast("Speciali salvati");
 };
 
+/* ---------- STAGIONE: cambio ---------- */
+$("#season").addEventListener("click",e=>{
+  const b=e.target.closest("[data-st]"); if(!b || b.dataset.st===stagione()) return;
+  if(b.dataset.armed!=="1"){ document.querySelectorAll("#season button").forEach(x=>x.dataset.armed=""); b.dataset.armed="1"; toast(`Tocca di nuovo per passare a ${STAGIONI[b.dataset.st].nome} per tutto lo staff`); setTimeout(()=>{ b.dataset.armed=""; },4000); return; }
+  const c=clData(); c.stagione=b.dataset.st; clSave(c); state.room="all"; render(); toast(`Mappa ${STAGIONI[b.dataset.st].nome}: ${STAGIONI[b.dataset.st].sale.map(id=>ROOMS.find(r=>r.id===id).name).join(", ")}`);
+});
+
 /* ---------- EDITOR ---------- */
 let delArmed=false, pickerOpen=false;
 function fmtDate(d){ const [y,m,dd]=d.split("-"); return new Date(+y,m-1,+dd).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"}); }
@@ -1492,12 +1525,12 @@ function suggest(pax){
   if(!pax || pax<1) return res;
   const free = n => !isBusy(n);
   const opts=[];
-  Object.keys(TABLES).forEach(n=>{
+  activeTables().forEach(n=>{
     const t=TABLES[n]; if(!free(n) || t.max<pax) return;
     if(t.banco && pax>1) return;
     opts.push({tables:[n], max:t.max, waste:t.max-pax, under:Math.max(0,minSeats(n)-pax), combo:0});
   });
-  JOIN.forEach(g=>{
+  JOIN.filter(g=>g.every(ON)).forEach(g=>{
     if(TABLES[g[0]].banco){
       if(pax!==2) return; // al banco si siedono al massimo in due vicini
       for(let i=0;i+pax<=g.length;i++){ const sub=g.slice(i,i+pax); if(sub.every(free)) opts.push({tables:sub, max:pax, waste:0, under:0, combo:1}); }
@@ -1510,7 +1543,7 @@ function suggest(pax){
   });
   const score=o=>o.waste + o.under*2 + o.combo*0.5;
   const tol = pax<=4 ? 2 : 3;
-  ROOMS.forEach(rm=>{
+  AR().forEach(rm=>{
     const mine=opts.filter(o=>TABLES[o.tables[0]].room===rm.id).sort((a,b)=>score(a)-score(b) || a.combo-b.combo || tkey(a.tables[0])-tkey(b.tables[0]));
     let ok=mine.filter(o=>o.waste<=tol && o.under<=1);
     if(!ok.length && mine.length && mine[0].waste<=tol+3) ok=[mine[0]]; // in questa sala niente di preciso: la soluzione più vicina
@@ -1541,7 +1574,7 @@ function renderEditor(){
       (g.altri>0?`<span class="sgmore">+${g.altri} nell'elenco</span>`:"")+`</div></div>`).join("")
     : (need && pax ? `<div class="sughd">Nessun tavolo libero adatto a ${pax} persone: unisci più tavoli dall'elenco.</div>` : "");
   if(pickerOpen){
-    pk.innerHTML = ROOMS.map(rm=>`<h5>${rm.name}</h5><div class="chips">`+sorted(rm.tables).map(t=>{
+    pk.innerHTML = ROOMS.filter(rm=>AR().includes(rm)||e.tables.some(n=>TABLES[n].room===rm.id)).map(rm=>`<h5>${rm.name}</h5><div class="chips">`+sorted(rm.tables).map(t=>{
       const on=e.tables.includes(t.n), busy=!on && isBusy(t.n), good=!on && !busy && sgSet.has(t.n), unit=!on && !busy && !good && sg.uniti.has(t.n);
       return `<button type="button" class="chip ${on?"on":""} ${busy?"busy":""} ${good?"sug":""} ${unit?"sug sugc":""}" data-pk="${t.n}">${t.label?t.label:t.n}<small>${t.seats}p</small></button>`;
     }).join("")+`</div>`).join("");
