@@ -217,3 +217,35 @@ grant execute on function public.create_backup(text) to service_role;
 grant execute on function public.apply_snapshot(jsonb) to service_role;
 grant execute on function public.restore_backup(text) to service_role;
 grant execute on function public.prune_backups() to service_role;
+
+-- Contatore visite del sito: una riga per giorno (data italiana).
+create table if not exists public.visite (
+  giorno date primary key,
+  n bigint not null default 0
+);
+alter table public.visite enable row level security;
+
+create or replace function public.visite_stats(p_giorno date)
+returns json language sql stable security invoker set search_path = public
+as $$
+  select json_build_object(
+    'oggi',   coalesce(sum(n) filter (where giorno = p_giorno), 0),
+    'mese',   coalesce(sum(n) filter (where date_trunc('month', giorno) = date_trunc('month', p_giorno)), 0),
+    'anno',   coalesce(sum(n) filter (where date_trunc('year', giorno) = date_trunc('year', p_giorno)), 0),
+    'totale', coalesce(sum(n), 0)
+  ) from public.visite
+$$;
+
+create or replace function public.conta_visita(p_giorno date)
+returns json language plpgsql security invoker set search_path = public
+as $$
+begin
+  insert into public.visite (giorno, n) values (p_giorno, 1)
+  on conflict (giorno) do update set n = public.visite.n + 1;
+  return public.visite_stats(p_giorno);
+end $$;
+
+revoke execute on function public.visite_stats(date) from public, anon, authenticated;
+revoke execute on function public.conta_visita(date) from public, anon, authenticated;
+grant execute on function public.visite_stats(date) to service_role;
+grant execute on function public.conta_visita(date) to service_role;

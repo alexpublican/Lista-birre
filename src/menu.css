@@ -402,6 +402,21 @@
 @media(min-width:768px){.mx .loc-btn h2{font-size:48px}}
 .mx .loc-btn .go{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:999px;border:1px solid color-mix(in srgb,var(--c) 60%,transparent);background:rgba(18,16,14,.6);color:var(--ct);font-size:20px;backdrop-filter:blur(6px);transition:transform .2s,background-color .2s}
 .mx .loc-btn:hover .go{transform:translateX(4px);background:var(--cbg)}
+/* contatore visite (prima pagina, sotto «Il locale») */
+.mx .vis-wrap{max-width:72rem;width:100%;margin:0 auto;padding:0 16px 28px}
+@media(min-width:768px){.mx .vis-wrap{padding:0 24px 36px}}
+.mx .vis{--c:#D4A15A;--ct:#F1D3A1;position:relative;overflow:hidden;border-radius:20px;border:1px solid rgba(212,161,90,.28);background:radial-gradient(80% 140% at 50% 0%,rgba(51,36,15,.85),transparent 70%),#15110E;padding:16px 14px 18px;text-align:center;animation-delay:300ms}
+.mx .vis::before{content:"";position:absolute;left:50%;top:0;width:120px;height:1px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,#D4A15A,transparent)}
+.mx .vis-k{display:inline-flex;align-items:center;gap:8px;margin:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.25em;text-transform:uppercase;color:var(--ct);opacity:.85}
+.mx .vis-grid{display:grid;grid-template-columns:repeat(4,1fr);margin-top:14px}
+.mx .vis-cell{display:flex;flex-direction:column;align-items:center;gap:4px;padding:2px 4px;min-width:0}
+.mx .vis-cell+.vis-cell{border-left:1px solid rgba(212,161,90,.16)}
+.mx .vis-n{font-family:var(--head);font-weight:700;font-size:24px;line-height:1.05;color:#FFF9F2;font-variant-numeric:tabular-nums;letter-spacing:-.01em;white-space:nowrap}
+.mx .vis-l{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--mtx)}
+.mx .vis-cell.tot .vis-n{color:var(--gold2);font-style:italic}
+.mx .vis-cell.tot .vis-l{color:var(--ct)}
+@media(max-width:380px){.mx .vis-n{font-size:20px}.mx .vis-l{font-size:9px;letter-spacing:.12em}}
+@media(min-width:768px){.mx .vis{padding:22px 28px 24px}.mx .vis-n{font-size:34px}.mx .vis-l{font-size:11px}.mx .vis-grid{margin-top:18px}}
 /* «Il locale»: pagina */
 .mx .loc-page{max-width:72rem;margin:0 auto;padding:8px 16px 48px}
 @media(min-width:640px){.mx .loc-page{padding:8px 24px 64px}}

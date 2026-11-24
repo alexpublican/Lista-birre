@@ -25,6 +25,7 @@ import BrandMark from "@/components/BrandMark";
 import VenueInfo from "@/components/VenueInfo";
 import PhotoViewer from "@/components/PhotoViewer";
 import Galleria from "@/components/Galleria";
+import VisitCounter from "@/components/VisitCounter";
 import { fotoLocaleUrl, useLocale } from "@/lib/locale";
 import {
   SETTORI_BERE,
@@ -192,6 +193,7 @@ export function MenuIngresso() {
               </span>
             </Link>
           </div>
+          <VisitCounter />
         </div>
       </div>
       <MenuFooter />

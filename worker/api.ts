@@ -986,6 +986,15 @@ const publicLocale = (doc: { foto: Row[] }) => ({
 
 on("GET", "/locale", async (c) => json(publicLocale(await loadLocale(c.db))));
 
+// ------------------------------------------------------------------ contatore visite
+// Un giorno = data italiana (Europe/Rome). POST conta una visita e restituisce i numeri,
+// GET li restituisce soltanto. Il browser conta una sola volta per sessione (VisitCounter.tsx).
+const oggiRoma = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date());
+type Visite = { oggi: number; mese: number; anno: number; totale: number };
+const numVisite = (v: Visite): Visite => ({ oggi: +v.oggi, mese: +v.mese, anno: +v.anno, totale: +v.totale });
+on("GET", "/visite", async (c) => json(numVisite(await c.db.rpc<Visite>("visite_stats", { p_giorno: oggiRoma() }))));
+on("POST", "/visite", async (c) => json(numVisite(await c.db.rpc<Visite>("conta_visita", { p_giorno: oggiRoma() }))));
+
 /** Ordine e didascalie (le foto si aggiungono e tolgono con /locale/photo). */
 on(
   "PUT",
